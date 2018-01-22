@@ -1,0 +1,46 @@
+{% extends 'index.html' %}
+{% load tags %}
+
+{% block title %}{% endblock %}
+
+{% block style %}
+    <style>
+        .wrapper {
+            float: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>删除对象
+            <small>Object Delete</small>
+        </h4>
+    </div>
+    <div class="wrapper col-md-10">
+        <p>你确定要删除对象 {{ message.message }} 吗？以下所有关联对象都将被删除：</p>
+        <h4><strong>概况</strong></h4>
+        <ul>
+            {% for key, value  in summary.items %}
+                <li>{{ key }}: {{ value }}</li>
+            {% endfor %}
+        </ul>
+        <h4><strong>关联对象</strong></h4>
+        {% render_message_html message as message_html %}
+        {{ message_html|safe }}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="">
+                <input type="hidden" class="" name="post" value="yes">
+                <input type="hidden" class="" name="referer" value="{{ request.environ.HTTP_REFERER }}">
+                <input type="submit" class="btn btn-danger" value="Yes, I'm sure">
+                <a href="{{ request.environ.HTTP_REFERER }}" class="btn btn-default">No, take me back</a>
+            </div>
+        </form>
+    </div>
+
+{% endblock %}

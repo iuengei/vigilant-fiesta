@@ -1,0 +1,10 @@
+{% extends 'index.html' %}
+
+
+{% block content %}
+    <div class="page-header"></div>
+    <h4>权限不足，请{% if request.environ.HTTP_REFERER %}
+        <a href="{{ request.environ.HTTP_REFERER }}">返回</a>{% else %}返回{% endif %}。</h4>
+    <h4>You don't have enought permissions to this action!</h4>
+{% endblock %}
+

@@ -1,0 +1,318 @@
+{% extends 'index.html' %}
+{% load tags %}
+{% load bootstrap3 %}
+
+{% block title %}{{ title.0 }}{% endblock %}
+
+{% block style %}
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{{ title.0 }}
+            <small>{{ title.1 }}</small>
+            <a type="button" class="add_plan_button btn btn-danger pull-right"
+               data-toggle="collapse" data-target="#add_form">Add</a>
+            <div class="col-md-4 pull-right">
+                <form method="get">
+                    <div class="input-group">
+                        <input type="text" class="form-control search_content"
+                               placeholder="Search for..." name="s">
+                        <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                    </div>
+                </form>
+            </div>
+        </h4>
+    </div>
+
+    <div>
+
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" role="tablist">
+            <li role="presentation">
+                <a href="{% url 'main:courses' %}">完成事项</a>
+            </li>
+            <li role="presentation" class="active">
+                <a href="{% url 'main:course_plan' %}">待排事项&nbsp;
+                    {% if plan_count %}<span class="badge">{{ plan_count }}</span>{% endif %}
+                </a>
+            </li>
+        </ul>
+        <!-- Tab panes -->
+        <div class="">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>序号
+                        <span class="glyphicon glyphicon-sort" aria-hidden="true" id="id"></span></th>
+                        <th>校区
+                            <span class="glyphicon glyphicon-sort" aria-hidden="true" id="student__branch"></span>
+                        </th>
+                    {% for foo in fields %}
+                        <th>{% render_field_verbosename model foo %}
+                            <span class="glyphicon glyphicon-sort" aria-hidden="true" id="{{ foo }}"></span></th>
+                    {% endfor %}
+                    <th>操作</th>
+                </tr>
+
+                </thead>
+
+                <tbody class="add_plan_form">
+                <form method="post">
+                    {% csrf_token %}
+                    <tr class="add_form collapse" id="add_form">
+                        <td></td>
+                            <td>{% bootstrap_field branch label=False %}</td>
+                        {% for foo in form %}
+                            <td>{% bootstrap_field foo label=False %}</td>
+                        {% endfor %}
+                        <td></td>
+                        <th>
+                            <button type="submit" class="btn btn-primary">创建</button>
+                        </th>
+                    </tr>
+                </form>
+                </tbody>
+                <tbody class="items_show"></tbody>
+                <tbody class="items_hidden hidden">
+                {% for item in items %}
+                    <tr class="{% render_model_name model %}-{{ item.id }} item" data="{{ item.id }}">
+                        <td class="id">{{ forloop.counter }}</td>
+                            <td class="branch"
+                                data="{{ item.student.branch }}">{{ item.student.get_branch_display }}</td>
+                        {% for foo in fields %}
+                            {% if foo != 'status' %}
+                                <td class="{{ foo }}" data="{% render_field_value item foo %}">
+                                    {% render_field_display item foo %}</td>
+                            {% else %}
+                                {% render_field_value item foo as status %}
+                                {% if status %}
+                                    <td class="status" data="{{ status }}"><span class="label label-success">已完成
+                                        <span class="glyphicon glyphicon-ok-circle" aria-hidden="true"></span></span>
+                                    </td>
+                                {% else %}
+                                    <td class="status" data="{{ status }}"><span class="label label-danger">未完成
+                                        <span class="glyphicon glyphicon-remove-circle"
+                                              aria-hidden="true"></span></span>
+                                    </td>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        <td>
+                            <div class="btn-group">
+                                <a role="button" class="dropdown-toggle" data-toggle="dropdown"
+                                   aria-haspopup="true" aria-expanded="false">Action
+                                </a>
+                                <ul class="dropdown-menu actions_menu">
+                                    {% if not item.status %}
+                                        <li><a class="chain" href="{% url 'main:course_chain' item.pk %}">排课</a></li>
+                                        <li><a class="delete">删除</a></li>
+                                    {% else %}
+                                        <li><a class="copy">复制</a></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="table_footer text-info"><span class="items_total">{{ items.count }}</span> records in total
+    </div>
+    <div id="Pagination" class="pagination"><!-- 这里显示分页 --></div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        $(function () {
+            initPagination();
+            bindSortFunc();
+{#            bindSearchButton();#}
+            getStudentsData();
+            bindActionsMenu();
+
+            $(window).keydown(function (event) {
+                switch (event.keyCode) {
+                    case 13:
+                        if ($('.search_content:focus').length === 1) {
+                            $('.search_button').click();
+                        }
+                }
+            });
+
+        });
+
+        function initPagination() {
+            var current_page = arguments[0] ? arguments[0] : 1;
+            var items_pre = arguments[1] ? arguments[1] : 15;
+            createPagination({
+                items_per: items_pre,
+                num_edge_entries: 1, //边缘页数
+                num_display_entries: 10, //主体页数
+                entries_class: ".items_hidden .item",
+                show_class: ".items_show",
+                current_page: current_page - 1 //默认0，表示第一页
+            });
+        }
+
+        function getStudentsData() {
+            $.ajax({
+                url: "{% url 'main:get_plan_ajax' %}",
+                type: 'GET',
+                dataType: 'json',
+                async: true,
+                success: function (data) {
+                    changeSchoolGrade(data);
+                }
+            })
+        }
+
+        function changeSchoolGrade(data) {
+            var fields = ['branch', 'grade'];
+            $.each(fields, function () {
+                $('.add_plan_form').on('change', "select[name='" + this + "']", function () {
+
+                    var branch = $(".add_plan_form select[name='branch']").val();
+                    var grade = $(".add_plan_form select[name='grade']").val();
+                    var student = $(".add_plan_form select[name='student']");
+
+                    try {
+                        var students = data[branch][grade] || {};
+                    } catch (e) {
+                        students = {}
+                    }
+
+                    var eles = student.find("option");
+                    $.each(eles, function () {
+                        if ($(this).attr('value') in students) {
+                            $(this).removeClass('hidden')
+                        } else {
+                            $(this).addClass('hidden')
+                        }
+                    });
+                    $(".add_plan_form select[name='student']").val('')
+                })
+            })
+
+        }
+
+
+        function bindActionsMenu() {
+            $('.actions_menu').on('click', 'a', function () {
+                var ele = $(this).parentsUntil('tbody')[4];
+                var ele_id = $(ele).attr('data');
+                var type = $(this).attr('class');
+
+                if (type === 'delete') {
+                    var resp = coursePlanDelete(ele_id);
+                    if (resp) {
+                        ele.remove()
+                    }
+                } else if (type === 'copy') {
+                    copyCoursePlan(ele);
+                }
+            })
+        }
+
+        function coursePlanDelete(id) {
+            var result;
+            $.ajax({
+                url: "{% url 'main:courseplan_delete' %}",
+                type: 'GET',
+                data: {item_id: id},
+                dataType: 'json',
+                async: false,
+                success: function (resp) {
+                    result = resp;
+                }
+            });
+            return result
+        }
+
+        function copyCoursePlan(ele) {
+            var student = $(ele).find('.student').attr('data');
+            var branch = $(ele).find('.branch').attr('data');
+            var grade = $(ele).find('.grade').attr('data');
+            var subject = $(ele).find('.subject').attr('data');
+            var plan_time = $(ele).find('.plan_time').attr('data');
+            var hours = $(ele).find('.hours').attr('data');
+
+            var form = $('.add_plan_form');
+            form.find("select[name='student']").val(student);
+            form.find("select[name='branch']").val(branch);
+            form.find("select[name='grade']").val(grade);
+            form.find("select[name='subject']").val(subject);
+            form.find("select[name='plan_time']").text(plan_time);
+            form.find("select[name='hours']").val(hours);
+
+            $('#add_form').addClass('in')
+        }
+
+        function bindSortFunc() {
+            $('.glyphicon-sort').on('click', function () {
+                var sign = $(this).attr('id');
+                var query = window.location.search.substring(1);
+                var order_by = getQueryVariable('o');
+
+                if (order_by) {
+                    var start = query.indexOf(order_by);
+                    var index = order_by.indexOf(sign);
+                    var index_end = order_by.lastIndexOf(sign);
+                    if (index >= 0) {
+                        if (order_by.indexOf('-' + sign) >= 0) {
+                            order_by = order_by.substring(0, index - 1) + order_by.substring(index_end)
+                        } else {
+                            order_by = order_by.substring(0, index) + '-' + order_by.substring(index_end)
+
+                        }
+                    } else {
+                        order_by = order_by + ':' + sign
+                    }
+
+                    query = query.substring(0, start) + order_by;
+                } else {
+                    if (query === '') {
+                        query = "o=" + sign
+                    } else {
+                        query = query + "&o=" + sign
+                    }
+
+                }
+                window.location.href = "?" + query;
+
+            })
+        }
+
+        function getQueryVariable(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split("&");
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split("=");
+                if (pair[0] === variable) {
+                    return pair[1];
+                }
+            }
+            return (false);
+        }
+
+        {#        function bindSearchButton() {#}
+        {#            $('.search_button').on('click', function () {#}
+        {#                var search_content = $('.search_content').val();#}
+        {#                if (search_content === '') {#}
+        {#                    window.location.href = '{{ request.path }}';#}
+        {#                }#}
+        {#                else {#}
+        {#                    window.location.href = '{{ request.path }}' + "?s=" + search_content;#}
+        {#                }#}
+        {##}
+        {#            })#}
+        {#        }#}
+    </script>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends 'index.html' %}
+{% load bootstrap3 %}
+{% block title %}学生详情—{{ detail.name }}{% endblock %}
+
+{% block style %}
+    <style>
+        .student_img img {
+            width: 100%;
+            height: 100%
+        }
+
+        .add_note, .edit_detail {
+            display: inline;
+        }
+
+        .note_foot {
+            text-align: right;
+            position: relative;
+            top: 10px;
+            right: 5px;
+        }
+
+        .add_note_error {
+            position: relative;
+            left: 50px;
+        }
+
+        .gravatar_upload {
+            display: none;
+        }
+
+        .student_img:hover .gravatar_upload {
+            display: inline;
+        }
+
+    </style>
+    <script src="/static/masonry.pkgd.min.js"></script>
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+
+{% block content %}
+    <div class="modal add_note_modal" tabindex="-1" role="dialog" aria-labelledby="add_note_title">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 id="add_note_title" class="modal-title">增加贴条<span class="add_note_error text-danger"></span>
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <form id="add_note_form">
+                        {% csrf_token %}
+
+                        {{ tag_form.to }}
+                        {{ tag_form.author }}
+                        {% bootstrap_field tag_form.content show_label=False %}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">退出</button>
+                    <button type="button" class="btn btn-primary add_note_submit">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="page-header">
+        <h3>学生详情
+            <small>Student Details</small>
+            <a href="{% url 'main:student_edit' details.id %}" type="button" class="btn btn-danger pull-right">编辑</a>
+
+        </h3>
+    </div>
+    <div class="student_detail row">
+        <div class="student_img col-md-2">
+            <img class="student_gravatar img-thumbnail" src="{{ details.image_url }}" alt="相片">
+            <div class="gravatar_upload pull-right">
+                <input class="btn btn-default btn-sm upload_button" type="button" value="更换头像"/>
+                <input class="file_upload_button hidden" type="file" name="gravatar"/>
+            </div>
+        </div>
+        <div content="student_details col-md-10">
+            <div class="student_detail_list col-md-4">
+                <ul class="list-group">
+                    <li class="list-group-item">姓名： <span>{{ details.name }}</span></li>
+                    <li class="list-group-item">性别： <span>{{ details.get_sex_display }}</span></li>
+                    <li class="list-group-item">年级： <span>{{ details.get_grade_display }}</span></li>
+                    <li class="list-group-item">校区： <span>{{ details.get_branch_display }}</span></li>
+                    <li class="list-group-item">班主任： <span>{{ details.supervisor.name }}</span></li>
+                    {% for each in details.parents.all %}
+                        {% if each.sex == 0 %}
+                            <li class="list-group-item">母亲姓名： <span>{{ each.name }}</span></li>
+                            <li class="list-group-item">电话： <span>{{ each.mobile }}</span></li>
+                        {% else %}
+                            <li class="list-group-item">父亲姓名： <span>{{ each.name }}</span></li>
+                            <li class="list-group-item">电话： <span>{{ each.mobile }}</span></li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="teachers_list col-md-2">
+                <table class="table table-bordered">
+                    <thead>
+                    <tr>
+                        <td><strong>科目</strong></td>
+                        <td><strong>授课教师</strong></td>
+                    </tr>
+                    <tbody>
+                    {% for each in teachers %}
+                        <tr>
+                            <td>{{ each.get_subject_display }}</td>
+                            <td>{{ each.name }}</td>
+
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    </thead>
+                </table>
+            </div>
+            <div class="courses_list col-md-4">
+                <ul class="list-group">
+                    <li class="list-group-item"><strong>课程列表</strong></li>
+                    {% for each in teachers %}
+                        <li class="list-group-item">{{ each.teacher.subject.value }}：
+                            <a href="/teachers/{{ each.teacher_id }}">{{ each.teacher.name }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+
+            </div>
+        </div>
+    </div>
+    <div class="page-header">
+        <h4>贴条记录
+            <small>Student Notes</small>
+            <button class="add_note btn btn-primary pull-right"
+                    data-toggle="modal" data-target=".add_note_modal">增加
+            </button>
+        </h4>
+    </div>
+
+    <div id="Pagination" class="pagination"><!-- 这里显示分页 --></div>
+
+    <div class="student_note_show row">
+    </div>
+
+    <div class="student_note_list row hidden">
+        {% for each in tags %}
+            <div class="student_note col-sm-6 col-md-4">
+                <div class="thumbnail">
+                    <div class="caption">
+                        <p class="">{{ each.content }}</p>
+                    </div>
+                    <p class="note_foot text-info">{{ each.create_time }} posted by {{ each.author.name }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+
+
+{% endblock %}
+
+{% block script %}
+    <script>
+        $(function () {
+            $('.student_note_show').masonry({
+                // options
+                itemSelector: '.student_note'
+            });
+
+            bindSubmitModal();
+            bindUploadButton(
+                ".upload_button", //绑定点击的按钮
+                ".file_upload_button", //上传文件的按钮
+                "{% url 'accounts:upload' 'gravatar' 'student' %}", //post提交的地址
+                ".student_gravatar" // 图片所在对象
+            );
+            createPagination({
+                items_per: 9,
+                num_edge_entries: 1, //边缘页数
+                num_display_entries: 5, //主体页数
+                entries_class: ".student_note_list .student_note",
+                show_class: ".student_note_show"
+
+            });
+
+        });
+
+        function bindSubmitModal() {
+            $(".add_note_submit").on('click', function () {
+                var form_data = $("#add_note_form").serializeArray();
+                $.ajax({
+                    url: "{% url 'main:tag_add' details.id request.user.id %}",
+                    type: "POST",
+                    data: form_data,
+                    dataType: "json",
+                    success: function (resp) {
+                        if (resp.status == 'success') {
+                            location.reload()
+                        } else {
+                            $(".add_note_error").text(resp.error_message)
+                        }
+                    }
+                });
+            });
+        };
+
+        function bindUploadButton(upload_button, file_upload_button, upload_url, img) {
+            $(upload_button).on('click', function () {
+                $(file_upload_button).click();
+            });
+
+            $(file_upload_button).on('change', function () {
+                var file = $(this)[0];
+                var dic = new FormData();
+                dic.append('csrfmiddlewaretoken', "{{ csrf_token }}");
+                dic.append('item_id', "{{ details.id }}");
+                dic.append('gravatar', file.files[0]);
+                $.ajax({
+                    url: upload_url,
+                    type: "POST",
+                    data: dic,
+                    processData: false,
+                    contentType: false,
+                    success: function (resp) {
+                        if (resp.status == 'success') {
+                            $(img).attr('src', resp.url)
+                        }
+                    }
+                });
+                return false
+            })
+        };
+
+
+    </script>
+{% endblock %}

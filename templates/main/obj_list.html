@@ -1,0 +1,154 @@
+{% extends 'index.html' %}
+{% block title %}}{{ title.0 }}{% endblock %}
+{% load tags %}
+{% block style %}
+    <style>
+        .wrapper {
+            float: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{{ title.0 }}
+            <small>{{ title.1 }}</small>
+            <a type="button" class="add_plan_button btn btn-danger pull-right" href="">Add</a>
+            <div class="col-md-4 pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control search_content" placeholder="Search for...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </h4>
+    </div>
+
+    <div class="wrapper col-md-10">
+        <table class="table table-hover">
+            <thead class="">
+            <tr>
+                {% for field in fields %}
+                        <th>{% render_field_verbosename model field %}&nbsp;
+                            <span class="glyphicon glyphicon-sort" aria-hidden="true" id="{{ field }}"></span>
+                        </th>
+                {% endfor %}
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody class="items_show">
+            {% for each in students %}
+                <tr class="item" id="student-{{ each.id }}">
+                    {% for field in fields %}
+                                <th class="{{ field }}">
+                                    <a href="">{% render_field_display each field %}</a>
+                                </th>
+                    {% endfor %}
+                    <td>
+                        <div class="btn-group">
+                            <a role="button" class="dropdown-toggle" data-toggle="dropdown"
+                               aria-haspopup="true" aria-expanded="false">Action
+                            </a>
+                            <ul class="dropdown-menu actions_menu">
+                                <li><a class="change" href="">编辑</a></li>
+                                <li><a class="delete" href="">删除</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="table_footer text-info"><span class="items_total">{{ students.count }}</span> records in
+            total
+        </div>
+        <div id="Pagination" class="pagination"></div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        $(function () {
+            bindSearchButton();
+
+            bindSortFunc();
+            $(window).keydown(function (event) {
+                switch (event.keyCode) {
+                    case 13:
+                        if ($('.search_content:focus').length === 1) {
+                            $('.search_button').click();
+                        }
+                }
+            });
+
+        });
+
+
+        function bindSearchButton() {
+            $('.search_button').on('click', function () {
+                var search_content = $('.search_content').val();
+                if (search_content !== '') {
+                    window.location.href = "?s=" + search_content;
+                } else {
+                    window.location.href = "?";
+                }
+            })
+        }
+
+
+        function bindSortFunc() {
+            $('.glyphicon-sort').on('click', function () {
+                var sign = $(this).attr('id');
+                var query = window.location.search.substring(1);
+                var order_by = getQueryVariable('o');
+
+                if (order_by) {
+                    var start = query.indexOf(order_by);
+                    var index = order_by.indexOf(sign);
+                    var index_end = order_by.lastIndexOf(sign);
+                    if (index >= 0) {
+                        if (order_by.indexOf('-' + sign) >= 0) {
+                            order_by = order_by.substring(0, index - 1) + order_by.substring(index_end)
+                        } else {
+                            order_by = order_by.substring(0, index) + '-' + order_by.substring(index_end)
+
+                        }
+                    } else {
+                        order_by = order_by + ':' + sign
+                    }
+
+                    query = query.substring(0, start) + order_by;
+                } else {
+                    if (query === '') {
+                        query = "o=" + sign
+                    } else {
+                        query = query + "&o=" + sign
+                    }
+
+                }
+                window.location.href = "?" + query;
+
+            })
+        }
+
+
+        function getQueryVariable(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split("&");
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split("=");
+                if (pair[0] === variable) {
+                    return pair[1];
+                }
+            }
+            return (false);
+        }
+
+    </script>
+{% endblock %}

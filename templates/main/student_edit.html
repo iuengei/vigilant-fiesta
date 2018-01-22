@@ -1,0 +1,151 @@
+{% extends 'index.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block style %}
+    <style>
+        .content_wrapper {
+            padding-left: 15%;
+            padding-right: 15%;
+            padding-top: 25px;
+        }
+
+        .form_wrapper {
+            float: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+
+{% load bootstrap3 %}
+<div class="content_wrapper row">
+    <ul class="nav nav-tabs">
+        <li role="presentation" {% if edit_detail %} class="active" {% endif %}><a
+                href="{% url 'main:student_edit' pk %}">学生详情</a></li>
+
+        <li role="presentation" {% if edit_teacher %} class="active" {% endif %}><a
+                href="{% url 'main:student_teacher_edit' pk %}">授课教师</a></li>
+
+    </ul>
+    <br>
+
+        <form method="post" class="form-horizontal">
+        {% csrf_token %}
+        {% if edit_detail %}
+            {% bootstrap_form form layout='horizontal' %}
+            <br>
+            <div class="form-group">
+                <label for="id_{{ parents_formset.prefix }}" class="col-md-3 control-label">家长信息</label>
+                <div class="col-md-9">
+                    <table id="id_{{ parents_formset.prefix }}" class="table">
+                        {{ parents_formset.management_form }}
+                        <thead>
+                        <tr>
+                            <td><label>姓名</label></td>
+                            <td style="width: 100px;"><label>关系</label></td>
+                            <td><label>电话</label></td>
+                            <td class="hidden">child</td>
+                            <td class="hidden">id</td>
+                            <th style="width: 70px"><a role="button"
+                                                       class="add_{{ parents_formset.prefix }} pull-right">增加
+                                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+                            </a></th>
+                        </tr>
+                        </thead>
+                        <tbody class="{{ parents_formset.prefix }}_items">
+                        {% for form in parents_formset %}
+                            <tr class="item">
+                                {% for each in form %}
+                                    {% if each.name != 'DELETE' %}
+                                        {% if each.is_hidden %}
+                                            <th class="hidden" id="{{ each.name }}">{{ each }}</th>
+                                        {% else %}
+                                            <th class="form-group" id="{{ each.name }}">
+                                                {% bootstrap_field each show_label=False placeholder='' %}</th>
+                                        {% endif %}
+                                    {% else %}
+                                        <th>
+                                            <div id="{{ each.name }}" class="hidden">{{ each }}</div>
+                                            <a role="button" style="padding-right: 0px;"
+                                               class="btn btn-link remove_{{ parents_formset.prefix }} pull-right">删除
+                                                <span class="glyphicon glyphicon-remove"
+                                                      aria-hidden="true"></span>
+                                            </a></th>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+
+                        <tbody class="hidden {{ parents_formset.prefix }}_temp">
+                        <tr class="item">
+                            {% for each in parents_formset.empty_form %}
+                                {% if each.name != 'DELETE' %}
+                                    {% if each.is_hidden %}
+                                        <th class="hidden" id="{{ each.name }}">{{ each }}</th>
+                                    {% else %}
+                                        <th class="form-group" id="{{ each.name }}">
+                                            {% bootstrap_field each show_label=False placeholder='' %}</th>
+                                    {% endif %}
+                                {% else %}
+                                    <th>
+                                        <div id="{{ each.name }}" class="hidden">{{ each }}</div>
+                                        <a role="button" style="padding-right: 0px;"
+                                           class="btn btn-link remove_{{ parents_formset.prefix }} pull-right">删除
+                                            <span class="glyphicon glyphicon-remove"
+                                                  aria-hidden="true"></span>
+                                        </a></th>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            {% include 'm2m_field.html' %}
+        {% endif %}
+            <button type="submit" class="btn btn-primary pull-right">submit</button>
+        </form>
+</div>
+{% endblock %}
+
+{% block script %}
+{% if edit_teacher %}
+<script src="/static/m2m_field.js"></script>
+<script>
+    $(function () {
+        initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+    });
+</script>
+{% else %}
+<script>
+    $(function () {
+        addItem('{{ parents_formset.prefix }}');
+        removeItem('{{ parents_formset.prefix }}');
+    });
+
+    function addItem(prefix) {
+        $(".add_" + prefix).on('click', function () {
+            var totalForms = parseInt($('#id_' + prefix + '-TOTAL_FORMS').attr('value'), 10);
+            var newele = $('.' + prefix + '_temp .item').clone();
+            var field_eles = newele.find("*[name^=" + prefix + "]");
+            $.each(field_eles, function () {
+                var name_blocks = $(this).attr('name').split('-');
+                $(this).attr('name', name_blocks[0] + '-' + totalForms + '-' + name_blocks[2])
+            });
+            $('.' + prefix + '_items').append(newele);
+            $('#id_' + prefix + '-TOTAL_FORMS').attr('value', totalForms + 1);
+        })
+    };
+    function removeItem(prefix) {
+        $("." + prefix + "_items").on('click', '.remove_' + prefix, function () {
+            var ele = $(this).parent().parent();
+            $(ele).find("input[name$='DELETE']").prop('checked', true);
+            ele.addClass('hidden');
+        })
+    }
+</script>
+{% endif %}
+{% endblock %}

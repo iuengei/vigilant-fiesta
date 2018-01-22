@@ -1,0 +1,42 @@
+{% extends 'index.html' %}
+{% block style %}
+    <style>
+        .content_wrapper {
+            padding-left: 25%;
+            padding-right: 25%;
+        }
+    </style>
+{% endblock %}
+{% load bootstrap3 %}
+
+{% block content %}
+    <div class="content_wrapper">
+    <div class="page-header"></div>
+        <form method="post" class="form-horizontal">
+        {% csrf_token %}
+            {% if m2m_field %}
+                {% for foo in form %}
+                {% if foo.name != m2m_field.name %}
+                    {% bootstrap_field foo layout='horizontal' %}
+                {% endif %}
+                {% endfor %}
+                {% include 'm2m_field.html' %}
+            {% else %}
+                {% bootstrap_form form layout='horizontal' %}
+            {% endif %}
+            <button type="submit" class="btn btn-primary pull-right">Submit</button>
+        </form>
+    </div>
+
+{% endblock %}
+
+{% block script %}
+{% if m2m_field %}
+<script src="/static/m2m_field.js"></script>
+<script>
+    $(function () {
+        initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+    });
+</script>
+{% endif %}
+{% endblock %}

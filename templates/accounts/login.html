@@ -1,0 +1,48 @@
+{% extends 'index.html' %}
+{% load bootstrap3 %}
+
+{% block style %}
+    <style>
+    form{
+        padding-left: 35%;
+        padding-right: 35%;
+        padding-top: 50px;
+
+    }
+
+    .check_code_img{
+        border:1px solid #ccc;
+        border-radius: 4px;
+        height: 34px;
+    }
+    .check_code_input{
+        padding: 0px 0px 15px 5px;
+        margin: 0px;
+    }
+
+    </style>
+{% endblock %}
+
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+        {% bootstrap_form form layout='inline' %}
+        <div class="col">
+            <div class="check_code_img col-md-6"><img class="check_code" src="/accounts/check_code?"></div>
+            <div class="check_code_input col-md-6">
+                <input type="text" class="form-control" placeholder="请输入验证码" name="checkcode">
+            </div>
+        </div>
+            <button type="submit" class="btn btn-default pull-right col-md-3">登录</button>
+    </form>
+{% endblock %}
+
+{% block script %}
+<script>
+    $(function () {
+        $(".check_code").on('click', function () {
+            $(this).attr('src', '/accounts/check_code?d=' + Math.random());
+        })
+    })
+</script>
+{% endblock %}

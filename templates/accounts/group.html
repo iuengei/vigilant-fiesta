@@ -1,0 +1,79 @@
+{% extends 'index.html' %}
+{% block style %}
+    <style>
+        .content_wrapper {
+{#            padding-left: 1%;#}
+{#            padding-right: 1%;#}
+        }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="content_wrapper">
+        <div class="col-md-8">
+            <div class="page-header">
+                <h4>用户组详情 &nbsp;
+                    <small>Group Details</small>
+                    <div class="col-md-4 pull-right">
+                        <div class="input-group">
+                            <input type="text" class="form-control search_content" placeholder="Search for...">
+                            <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                        </div>
+                    </div>
+                </h4>
+            </div>
+            <div class="row">
+                <p><label>Name</label>: {{ group.name }}</p>
+                <hr>
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Is Active</th>
+                        <th>Last Login</th>
+                        <th>Create Date</th>
+                        <th style="text-align:center">Edit user</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for user in users %}
+                        <tr id="user-{{ user.id }}">
+                            <td>{{ forloop.counter }}</td>
+                            <td><a href="{% url 'accounts:user' user.id %}">{{ user.name }}</a></td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.is_active }}</td>
+                            <td>{{ user.last_login|date:"M d, Y" }}</td>
+                            <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                            <td style="text-align:center">
+                            <a href="{% url 'accounts:user_edit' user.id %}">
+                                <span class="glyphicon glyphicon-edit" aria-hidden="true"></span></a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7">No user yet</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-3 col-md-offset-1">
+            <div class="page-header">
+                <h4>Permissions</h4>
+            </div>
+            <ul class="list-group">
+                {% for permission in permissions %}
+                    <li class="list-group-item group-list">{{ permission.name }}</li>
+                {% empty %}
+                    <p>No permission yet!</p>
+                {% endfor %}
+            </ul>
+
+        </div>
+
+    </div>
+{% endblock %}

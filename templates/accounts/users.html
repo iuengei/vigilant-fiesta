@@ -1,0 +1,98 @@
+{% extends 'index.html' %}
+
+{% block title %}Users{% endblock %}
+
+{% block style %}
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>用户列表
+            <small>User List</small>
+            <div class="col-md-4 pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control search_content" placeholder="Search for...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </h4>
+    </div>
+
+    <div class="table_wrapper col-md-10">
+        <table class="table table-hover">
+            <thead class="">
+            <tr>
+                <th>序号&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="id" type="asc"></span>
+                </th>
+                <th>姓名&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="name" type="asc"></span>
+                </th>
+                <th>邮箱&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="email" type="asc"></span>
+                </th>
+                <th>职务&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="duty" type="asc"></span>
+                </th>
+                <th>校区&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="branch" type="asc"></span>
+                </th>
+            </tr>
+            </thead>
+            <tbody class="items">
+            {% for each in users %}
+                <tr class="item" id="user-{{ each.id }}">
+                    <th class="id">{{ forloop.counter }}</th>
+                    <th class="name"><a href="{% url 'accounts:user' each.id %}">{{ each.name }}</a></th>
+                    <th class="email">{{ each.email }}</th>
+                    <th class="duty">{{ each.get_duty_display }}</th>
+                    <th class="branch">{{ each.get_branch_display }}</th>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="table_footer text-info"><span class="items_total">{{ count }}</span> records in total
+        </div>
+            {% load bootstrap3 %}
+            {% bootstrap_pagination users %}
+    </div>
+    <div class="col-md-2">
+        <p><strong>Filter By Group</strong></p>
+        <hr>
+        <div class="list-group">
+          <a href="{% url 'accounts:users' %}" class="list-group-item group-list {% if all %}active{% endif %}">All</a>
+          {% for group in groups %}
+            <a href="{% url 'accounts:group_users' group.id %}" class="list-group-item group-list {% if group_id == group.id %}active{% endif %}">{{ group.name }}</a>
+          {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        $(function () {
+            bindSearchButton();
+            $(window).keydown(function (event) {
+                switch (event.keyCode) {
+                    case 13:
+                        if ($('.search_content:focus').length === 1) {
+                            $('.search_button').click();
+                        }
+                }
+            });
+        });
+
+         function bindSearchButton() {
+            $('.search_button').on('click', function () {
+                var search_content = $('.search_content').val();
+                window.location.href = '{{ request.url }}' + "?s=" + search_content;
+            })
+        }
+
+    </script>
+{% endblock %}

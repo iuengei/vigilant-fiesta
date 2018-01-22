@@ -1,0 +1,68 @@
+{% extends 'index.html' %}
+
+{% block title %}Profile{% endblock %}
+{% block style %}
+    <style>
+        .content_wrapper {
+            padding-left: 15%;
+            padding-right: 15%;
+            padding-top: 25px;
+
+        }
+    </style>
+{% endblock %}
+{% block content %}
+    {% load bootstrap3 %}
+
+    <div class="content_wrapper row">
+        <ul class="nav nav-tabs">
+            {% if perms.accounts.add_teacher %}
+                <li role="presentation" {% if add_teacher %} class="active" {% endif %}><a
+                        href="{% url 'accounts:teacher_add' %}">Add Teacher</a></li>
+            {% endif %}
+
+            {% if perms.accounts.add_supervisor %}
+                <li role="presentation" {% if add_supervisor %} class="active" {% endif %}><a
+                        href="{% url 'accounts:supervisor_add' %}">Add Supervisor</a></li>
+            {% endif %}
+
+            {% if request.user.is_superuser %}
+                <li role="presentation" {% if add_user %} class="active" {% endif %}><a
+                        href="{% url 'accounts:user_add' %}">Add User</a></li>
+            {% endif %}
+
+            {% if perms.main.add_student %}
+                <li role="presentation" {% if add_student %} class="active" {% endif %}><a
+                        href="{% url 'main:student_add' %}">Add Student</a></li>
+            {% endif %}
+        </ul>
+        <br>
+        <div class="col-md-10 col-md-offset-1 form-horizontal">
+            <form method="post" action="">
+                {% csrf_token %}
+                {% if m2m_field %}
+                {% for foo in form %}
+                {% if foo.name != m2m_field.name %}
+                    {% bootstrap_field foo layout='horizontal' %}
+                {% endif %}
+                {% endfor %}
+                {% include 'm2m_field.html' %}
+                {% else %}
+                {% bootstrap_form form layout='horizontal' %}
+                {% endif %}
+                <button type="submit" class="btn btn-primary pull-right">submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+{% if m2m_field %}
+<script src="/static/m2m_field.js"></script>
+<script>
+    $(function () {
+        initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "index.html" %}
+{% block title %}{{ title.0 }}{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{{ title.0 }}
+            <small>{{ title.1 }}</small>
+            <a type="button" class="btn btn-danger pull-right" href="{{ add_url }}">Add</a>
+                <div class="col-md-4 pull-right">
+                    <div class="input-group">
+                        <input type="text" class="form-control search_content" placeholder="Search for...">
+                        <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                    </div>
+                </div>
+        </h4>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Group Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for group in groups %}
+            <tr id="group-{{ group.id }}">
+                <td>{{ forloop.counter }}</td>
+                <td><a href="{% url 'accounts:group' group.id %}">{{ group.name }}</td>
+                <td>
+                    <a href="{% url 'accounts:group_edit' group.id %}"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span>编辑</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">No group yet</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}
+
