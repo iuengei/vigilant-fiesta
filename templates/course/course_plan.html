@@ -49,9 +49,9 @@
                 <tr>
                     <th>序号
                         <span class="glyphicon glyphicon-sort" aria-hidden="true" id="id"></span></th>
-                        <th>校区
-                            <span class="glyphicon glyphicon-sort" aria-hidden="true" id="student__branch"></span>
-                        </th>
+                    <th>校区
+                        <span class="glyphicon glyphicon-sort" aria-hidden="true" id="student__branch"></span>
+                    </th>
                     {% for foo in fields %}
                         <th>{% render_field_verbosename model foo %}
                             <span class="glyphicon glyphicon-sort" aria-hidden="true" id="{{ foo }}"></span></th>
@@ -66,7 +66,7 @@
                     {% csrf_token %}
                     <tr class="add_form collapse" id="add_form">
                         <td></td>
-                            <td>{% bootstrap_field branch label=False %}</td>
+                        <td>{% bootstrap_field branch label=False %}</td>
                         {% for foo in form %}
                             <td>{% bootstrap_field foo label=False %}</td>
                         {% endfor %}
@@ -82,8 +82,8 @@
                 {% for item in items %}
                     <tr class="{% render_model_name model %}-{{ item.id }} item" data="{{ item.id }}">
                         <td class="id">{{ forloop.counter }}</td>
-                            <td class="branch"
-                                data="{{ item.student.branch }}">{{ item.student.get_branch_display }}</td>
+                        <td class="branch"
+                            data="{{ item.student.branch }}">{{ item.student.get_branch_display }}</td>
                         {% for foo in fields %}
                             {% if foo != 'status' %}
                                 <td class="{{ foo }}" data="{% render_field_value item foo %}">
@@ -134,7 +134,7 @@
         $(function () {
             initPagination();
             bindSortFunc();
-{#            bindSearchButton();#}
+            {#            bindSearchButton();#}
             getStudentsData();
             bindActionsMenu();
 
@@ -170,6 +170,7 @@
                 async: true,
                 success: function (data) {
                     changeSchoolGrade(data);
+                    changeStudent(data);
                 }
             })
         }
@@ -203,6 +204,32 @@
 
         }
 
+        function changeStudent(data) {
+            $('.add_plan_form').on('change', "select[name='student']", function () {
+
+                var branch_ele = $(".add_plan_form select[name='branch']");
+                var grade_ele = $(".add_plan_form select[name='grade']");
+                var student_val = $(".add_plan_form select[name='student']").val();
+
+                var go = true;
+                $.each(data, function (index, item) {
+                    var branch = index;
+                    $.each(item, function (index, item) {
+                        var grade = index;
+                        $.each(item, function (index, item) {
+                            if (index === student_val) {
+                                branch_ele.val(branch);
+                                grade_ele.val(grade);
+                                go = false;
+                                return go
+                            }
+                        });
+                        return go
+                    });
+                    return go
+                });
+            })
+        }
 
         function bindActionsMenu() {
             $('.actions_menu').on('click', 'a', function () {

@@ -18,7 +18,7 @@ def render_field_display(obj, field):
         else:
             value = obj.__dict__[field]
         if type(value).__name__ == 'datetime':
-            value = value.strftime("%Y-%m-%d %H:%M:%S")
+            value = value.strftime("%Y-%m-%d %H:%M")
     return value
 
 

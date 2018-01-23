@@ -73,7 +73,9 @@ class CoursesRecord(models.Model):
     teacher = models.ForeignKey('main.Teacher', verbose_name='教师')
     attendance = models.SmallIntegerField(null=True, blank=True, choices=attendance_choices, verbose_name='考勤')
     lesson_plan = models.ForeignKey('LessonPlan', null=True, blank=True, verbose_name='教案')
-    lesson_time = models.DateTimeField(default=datetime.now(), verbose_name='上课时间')
+    lesson_time = models.DateTimeField(default=datetime.now().replace(minute=0, second=0, microsecond=0),
+                                       verbose_name='上课时间')
+    lesson_timedelta = models.FloatField(default=7200 / 86400, verbose_name='上课时长')
     create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
     status = models.SmallIntegerField(choices=course_status_choices, default=3, verbose_name='状态')
 
@@ -107,9 +109,11 @@ class CoursePlan(models.Model):
     student = models.ForeignKey('main.Student', verbose_name='学生')
     grade = models.SmallIntegerField(choices=grade_choices, verbose_name='年级')
     subject = models.SmallIntegerField(choices=subject_choices, verbose_name='科目')
-    plan_time = models.DateTimeField(default=datetime.now(), verbose_name='计划时间')
+    plan_time = models.DateTimeField(default=datetime.now().replace(minute=0, second=0, microsecond=0),
+                                     verbose_name='计划时间')
     create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
-    hours = models.SmallIntegerField(default=2, verbose_name='课时')
+    hours = models.SmallIntegerField(default=2, choices=[(1, '一小时'), (2, '二小时'), (3, '三小时'), (4, '四小时')],
+                                     verbose_name='课时')
     status = models.BooleanField(default=False, verbose_name='完成')
 
     class Meta:

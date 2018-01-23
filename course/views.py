@@ -13,6 +13,7 @@ from course import models
 from course import forms
 from utils.search_queryset import SearchQuerySet
 
+
 # Create your views here.
 
 
@@ -179,6 +180,7 @@ class CourseChainView(View):
             plan = plan_form.save(commit=False)
             if obj.teacher.branch == plan.student.branch:
                 obj.student = course_plan
+                # obj.plan_timedelta
                 obj.save()
                 form.save_m2m()
 
@@ -350,11 +352,8 @@ class LessonPlanChangeView(View):
             return redirect(reverse('403'))
 
 
-
 def test1(request):
-
-    print(request.user.perm_obj)
-    print(id(request.user.perm_obj))
-    print(request.user.perm_obj.core)
-    print(id(request.user.perm_obj.core))
+    from django.utils.datetime_safe import datetime
+    default = datetime.now().minute
+    print(default)
     return HttpResponse('test')

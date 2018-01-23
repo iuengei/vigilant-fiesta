@@ -110,9 +110,9 @@ class TeacherForm(forms.ModelForm):
 class TeacherChangeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(TeacherChangeForm, self).__init__(*args, **kwargs)
-        for field in self.fields:
-            if field != 'mobile':
-                self.fields[field].disabled = True
+        # for field in self.fields:
+        #     if field != 'mobile':
+        #         self.fields[field].disabled = True
 
     class Meta:
         model = models.Teacher

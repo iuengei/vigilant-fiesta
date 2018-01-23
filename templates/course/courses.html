@@ -93,7 +93,11 @@
                         {% if item.attendance %}
                             <td data="{{ item.attendance }}">{{ item.get_attendance_display }}</td>
                         {% else %}
+                            {% if item.status == 1 %}
+                            <td><a href="#">添加</a></td>
+                            {% else %}
                             <td></td>
+                            {% endif %}
                         {% endif %}
 
                         <td class="status" data="{{ item.status }}">

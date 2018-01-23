@@ -1,5 +1,6 @@
 from django import forms
 from course import models
+from django.utils.timezone import timedelta
 from django.utils.translation import ugettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
 
@@ -16,7 +17,28 @@ class CourseChainForm(forms.ModelForm):
     class Meta:
         model = models.CoursesRecord
         fields = '__all__'
-        exclude = ['student', 'status']
+        exclude = ['student', 'status', 'lesson_timedelta']
+
+    def clean(self):
+        teacher = self.cleaned_data['teacher']
+        lesson_time = self.cleaned_data['lesson_time']
+        date_from = lesson_time - timedelta(seconds=3600 * 4)
+        date_to = lesson_time + timedelta(seconds=self.course_plan.instance.hours * 3600)
+        range_courses = teacher.coursesrecord_set.filter(lesson_time__range=(date_from, date_to))
+        if range_courses:
+            for course in range_courses:
+                course_time = course.lesson_time
+                course_over = course.lesson_time + timedelta(course.lesson_timedelta)
+                if (lesson_time < course_time and date_to > course_time) or (
+                                lesson_time >= course_time and lesson_time < course_over):
+                    self.add_error('teacher', forms.ValidationError(_('Teacher %s had one course form %s to %s.'),
+                                                                    code='invalid',
+                                                                    params=(teacher.name, course_time.isoformat(),
+                                                                            course_over)))
+        if self.errors:
+            return self.cleaned_data
+        self.cleaned_data['lesson_timedelta'] = float(self.course_plan.instance.hours * 3600 / 86400)
+        return self.cleaned_data
 
 
 class CoursePlanForm(forms.ModelForm):
@@ -40,6 +62,12 @@ class CoursePlanForm(forms.ModelForm):
         model = models.CoursePlan
         fields = '__all__'
         exclude = ['create_time', 'status']
+
+    def clean_plan_time(self):
+        plan_time = self.cleaned_data.get('plan_time')
+        if plan_time.minute not in [0, 30]:
+            raise forms.ValidationError('Parameter plan_time should be a point or a half ', code='invalid')
+        return plan_time.replace(second=0, microsecond=0)
 
 
 class LessonPlanForm(forms.ModelForm):
