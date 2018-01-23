@@ -6,16 +6,6 @@
 
 {% block style %}
     <link rel="stylesheet" href="/static/pagination.css">
-    <style>
-        #Pagination {
-            height: 0px;
-        }
-
-        #Pagination .pagination {
-            margin: 0px;
-        }
-
-    </style>
 {% endblock %}
 
 {% block content %}
@@ -24,12 +14,15 @@
             <small>{{ title.1 }}</small>
 
             <div class="col-md-4 pull-right">
-                <div class="input-group">
-                    <input type="text" class="form-control search_content" placeholder="Search for...">
-                    <span class="input-group-btn">
+                <form method="get">
+                    <div class="input-group">
+                        <input type="text" class="form-control search_content"
+                               placeholder="Search for..." name="s">
+                        <span class="input-group-btn">
                         <button class="btn btn-default search_button" type="button">Go!</button>
                     </span>
-                </div>
+                    </div>
+                </form>
             </div>
         </h4>
     </div>
@@ -47,7 +40,7 @@
         {% endif %}
         <!-- Tab panes -->
         <div class="">
-            <table class="table table-hover table-condensed">
+            <table class="table table-hover">
                 <thead>
                 <tr>
                     <th>序号 <span class="glyphicon glyphicon-sort" aria-hidden="true" id="id"></span>
@@ -76,14 +69,14 @@
 
                 {% for item in items %}
                     <tr class="{% render_model_name model %}-{{ item.id }}">
-                        <td class="id">{{ forloop.counter }}</td>
+                        <td class="id">{{ forloop.counter|add:per_number }}</td>
                         {% if request.user.is_superuser %}
                             <td>{{ item.teacher.get_branch_display }}</td>{% endif %}
 
                         <td data="plan-{{ item.student_id }}">{{ item.student }}</td>
                         <td data="{{ item.teacher_id }}">{{ item.teacher }}</td>
-                        <td>{{ item.lesson_time }}</td>
-                        <td>{{ item.student.hours }}</td>
+                        <td>{{ item.lesson_time|date:"Y-m-d H:i" }}</td>
+                        <td>{{ item.student.get_hours_display }}</td>
                         {% if item.lesson_plan %}
                             <td data="{{ item.lesson_plan_id }}">{{ item.lesson_plan }}</td>
                         {% else %}
@@ -94,9 +87,9 @@
                             <td data="{{ item.attendance }}">{{ item.get_attendance_display }}</td>
                         {% else %}
                             {% if item.status == 1 %}
-                            <td><a href="#">添加</a></td>
+                                <td><a href="#">添加</a></td>
                             {% else %}
-                            <td></td>
+                                <td></td>
                             {% endif %}
                         {% endif %}
 
@@ -126,15 +119,15 @@
                 {% endfor %}
                 </tbody>
             </table>
+
         </div>
 
     </div>
-
+    <div class="table_footer text-info"><span class="items_total">{{ items.paginator.count }}</span> records in total</div>
 
     <div id="Pagination" class="container">
         <div class="pagination">{% bootstrap_pagination items %}</div>
     </div>
-
 
 {% endblock %}
 
@@ -142,7 +135,6 @@
 {% block script %}
     <script>
         $(function () {
-            bindSearchButton();
             bindSortFunc();
             $(window).keydown(function (event) {
                 switch (event.keyCode) {
@@ -153,20 +145,6 @@
                 }
             });
         });
-
-        function bindSearchButton() {
-            $('.search_button').on('click', function () {
-                var search_content = $('.search_content').val();
-                if (search_content === '') {
-                    window.location.href = '{{ request.path }}';
-                }
-                else {
-                    window.location.href = '{{ request.path }}' + "?s=" + search_content;
-                }
-
-            })
-        }
-
 
         function bindSortFunc() {
             $('.glyphicon-sort').on('click', function () {
@@ -188,7 +166,6 @@
                     } else {
                         order_by = order_by + ':' + sign
                     }
-
                     query = query.substring(0, start) + order_by;
                 } else {
                     if (query === '') {

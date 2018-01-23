@@ -104,3 +104,4 @@ ENV/
 media/
 .idea/
 utils/sql/
+*/migrations/

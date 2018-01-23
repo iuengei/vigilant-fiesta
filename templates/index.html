@@ -54,6 +54,8 @@
             </div>
             <div id="navbar" class="collapse navbar-collapse">
                 <ul class="nav navbar-nav">
+                    <li class=""><a href="{% url 'course:list' %}">课程</a></li>
+
                     <li class="nav_students_list"><a href="{% url 'main:students' %}">学生</a></li>
                     {% if perms.accounts.add_teacher %}
                         <li class="nav_teachers_list"><a href="{% url 'main:teachers' %}">教师</a></li>
@@ -68,7 +70,6 @@
                         <li class="nav_monitoring"><a href="#contact">质控</a></li>
                     {% endif %}
 
-                    <li class=""><a href="{% url 'course:list' %}">课程</a></li>
 
                     {% if perms.main.add_lessonplan %}
                         <li class=""><a href="{% url 'course:lessonplans' %}">教案</a></li>

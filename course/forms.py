@@ -31,10 +31,11 @@ class CourseChainForm(forms.ModelForm):
                 course_over = course.lesson_time + timedelta(course.lesson_timedelta)
                 if (lesson_time < course_time and date_to > course_time) or (
                                 lesson_time >= course_time and lesson_time < course_over):
-                    self.add_error('teacher', forms.ValidationError(_('Teacher %s had one course form %s to %s.'),
+                    self.add_error('teacher', forms.ValidationError(_('Teacher %s had course form %s to %s.'),
                                                                     code='invalid',
-                                                                    params=(teacher.name, course_time.isoformat(),
-                                                                            course_over)))
+                                                                    params=(teacher.name,
+                                                                            course_time.strftime("%Y-%m-%d %H:%M"),
+                                                                            course_over.strftime("%H:%M"))))
         if self.errors:
             return self.cleaned_data
         self.cleaned_data['lesson_timedelta'] = float(self.course_plan.instance.hours * 3600 / 86400)

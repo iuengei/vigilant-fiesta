@@ -30,7 +30,6 @@
     </div>
 
     <div>
-
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation">
@@ -42,7 +41,7 @@
                 </a>
             </li>
         </ul>
-        <!-- Tab panes -->
+
         <div class="">
             <table class="table table-hover">
                 <thead>
@@ -77,11 +76,10 @@
                     </tr>
                 </form>
                 </tbody>
-                <tbody class="items_show"></tbody>
-                <tbody class="items_hidden hidden">
+                <tbody class="items_show">
                 {% for item in items %}
                     <tr class="{% render_model_name model %}-{{ item.id }} item" data="{{ item.id }}">
-                        <td class="id">{{ forloop.counter }}</td>
+                        <td class="id">{{ forloop.counter|add:per_number }}</td>
                         <td class="branch"
                             data="{{ item.student.branch }}">{{ item.student.get_branch_display }}</td>
                         {% for foo in fields %}
@@ -123,18 +121,19 @@
             </table>
         </div>
     </div>
-    <div class="table_footer text-info"><span class="items_total">{{ items.count }}</span> records in total
+    <div class="table_footer text-info"><span class="items_total">{{ items.paginator.count }}</span> records in total</div>
+
+    <div id="Pagination" class="container">
+        <div class="pagination">{% bootstrap_pagination items %}</div>
     </div>
-    <div id="Pagination" class="pagination"><!-- 这里显示分页 --></div>
 {% endblock %}
 
 
 {% block script %}
     <script>
         $(function () {
-            initPagination();
             bindSortFunc();
-            {#            bindSearchButton();#}
+
             getStudentsData();
             bindActionsMenu();
 
@@ -148,19 +147,6 @@
             });
 
         });
-
-        function initPagination() {
-            var current_page = arguments[0] ? arguments[0] : 1;
-            var items_pre = arguments[1] ? arguments[1] : 15;
-            createPagination({
-                items_per: items_pre,
-                num_edge_entries: 1, //边缘页数
-                num_display_entries: 10, //主体页数
-                entries_class: ".items_hidden .item",
-                show_class: ".items_show",
-                current_page: current_page - 1 //默认0，表示第一页
-            });
-        }
 
         function getStudentsData() {
             $.ajax({
@@ -328,18 +314,5 @@
             }
             return (false);
         }
-
-        {#        function bindSearchButton() {#}
-        {#            $('.search_button').on('click', function () {#}
-        {#                var search_content = $('.search_content').val();#}
-        {#                if (search_content === '') {#}
-        {#                    window.location.href = '{{ request.path }}';#}
-        {#                }#}
-        {#                else {#}
-        {#                    window.location.href = '{{ request.path }}' + "?s=" + search_content;#}
-        {#                }#}
-        {##}
-        {#            })#}
-        {#        }#}
     </script>
 {% endblock %}

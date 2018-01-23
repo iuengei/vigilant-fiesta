@@ -26,7 +26,7 @@ class CoursesView(View):
         students = get_objects_for_user(request.user, 'main.view_student', accept_global_perms=True)
         plan_count = models.CoursePlan.objects.filter(student__in=students).filter(status=False).count()
 
-        items = models.CoursesRecord.objects.filter(student__student__in=students)
+        items = models.CoursesRecord.objects.filter(student__student__in=students).select_related()
 
         search_content = request.GET.get('s', '')
         if search_content:
@@ -34,10 +34,7 @@ class CoursesView(View):
             items = SearchQuerySet(items, search_content).result()
 
         order_by = request.GET.get('o', '')
-        if order_by:
-            items = items.order_by(*order_by.split(':'))
-        else:
-            items = items.order_by('status')
+        items = items.order_by(*order_by.split(':')) if order_by else items.order_by('status')
 
         paginator = Paginator(items, 15)
         current_page = request.GET.get('page', 1)
@@ -51,6 +48,7 @@ class CoursesView(View):
         data['items'] = items
         data['is_courses'] = True
         data['plan_count'] = plan_count
+        data['per_number'] = (items.number-1)*items.paginator.per_page
         data['title'] = ('排课记录', 'Courses Record')
         data['fields'] = self.fields
         data['model'] = models.CoursesRecord
@@ -101,8 +99,18 @@ class CoursePlanView(View):
         order_by = request.GET.get('o', '')
         items = items.order_by(*order_by.split(':')) if order_by else items.order_by('status')
 
+        paginator = Paginator(items, 15)
+        current_page = request.GET.get('page', 1)
+        try:
+            items = paginator.page(current_page)
+        except PageNotAnInteger:
+            items = paginator.page(1)
+        except EmptyPage:
+            items = paginator.page(paginator.num_pages)
+
         data['items'] = items
         data['plan_count'] = plan_count
+        data['per_number'] = (items.number-1)*items.paginator.per_page
         data['title'] = ('计划排课', 'Course Plan')
         data['fields'] = self.fields
         data['is_courseplan'] = True
