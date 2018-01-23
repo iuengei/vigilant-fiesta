@@ -2,7 +2,7 @@ from django.apps import apps
 from collections import OrderedDict
 from django.db.models import ObjectDoesNotExist
 from django.db.models.fields.related import ManyToManyField
-from django.db.models.fields.reverse_related import ManyToManyRel, ManyToOneRel
+from django.db.models.fields.reverse_related import ManyToManyRel, ManyToOneRel, OneToOneRel
 from django.shortcuts import render, Http404, redirect
 from django.views import View
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -69,14 +69,22 @@ def recursive_related(obj):
 
             # 判断字段是否需要相关查询 m2m/m21/121
             if isinstance(each, ManyToOneRel):
-                # 若关联对象不为空获取之
-                if hasattr(current.obj, each.name):
-                    for i in getattr(current.obj, each.name).get_queryset():
-                        table_name = i._meta.verbose_name
-                        new_message = MessageTree(i, message=table_name + ": " + i.__str__())
+                if isinstance(each, OneToOneRel):
+                    if hasattr(current.obj, each.name):
+                        _obj = getattr(current.obj, each.name)
+                        table_name = _obj._meta.verbose_name
+                        new_message = MessageTree(_obj, message=table_name + ": " + _obj.__str__())
                         current.children.append(new_message)
+                        obj_queue.extend(current.children)
+                else:
+                    # 若关联对象不为空获取之
+                    if hasattr(current.obj, each.name):
+                        for i in getattr(current.obj, each.name).get_queryset():
+                            table_name = i._meta.verbose_name
+                            new_message = MessageTree(i, message=table_name + ": " + i.__str__())
+                            current.children.append(new_message)
 
-                    obj_queue.extend(current.children)
+                        obj_queue.extend(current.children)
             elif isinstance(each, ManyToManyField) or isinstance(each, ManyToManyRel):
                 # 获取关联对象,不进队列
                 if hasattr(current.obj, each.name):

@@ -37,10 +37,10 @@
         {% if request.user.duty != 2 %}
             <ul class="nav nav-tabs" role="tablist">
                 <li role="presentation" class="active">
-                    <a href="{% url 'main:courses' %}">完成事项</a>
+                    <a href="{% url 'course:list' %}">完成事项</a>
                 </li>
                 <li role="presentation">
-                    <a href="{% url 'main:course_plan' %}">待排事项&nbsp;
+                    <a href="{% url 'course:plan' %}">待排事项&nbsp;
                         {% if plan_count %}<span class="badge">{{ plan_count }}</span>{% endif %}</a>
                 </li>
             </ul>
@@ -113,7 +113,7 @@
                                    aria-haspopup="true" aria-expanded="false">Action
                                 </a>
                                 <ul class="dropdown-menu actions_menu">
-                                    <li><a class="change" href="{% url 'main:course_change' item.id %}">编辑</a></li>
+                                    <li><a class="change" href="{% url 'course:course_edit' item.id %}">编辑</a></li>
                                     <li><a class="delete" href="{% render_delete_url model item.id %}">删除</a></li>
                                 </ul>
                             </div>

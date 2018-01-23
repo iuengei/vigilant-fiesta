@@ -1,15 +1,28 @@
 {% load bootstrap3 %}
 {% load tags %}
+
+{% if m2m_field.filter_args %}
+    <div class="form-group filter">
+            <label class="col-md-3 control-label" for="id_filter_fields">筛选条件</label>
+            <div class="col-md-9 form-inline" id="id_filter_fields">
+        {% for field in m2m_field.filter_form %}
+            {% bootstrap_field field layout='horizontal' %}
+        {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
 <div class="form-group">
-    <label for="id_{{ m2m_field.name }}" class="col-md-3 control-label">{% render_field_verbosename m2m_field.form m2m_field.name %}</label>
+    <label for="id_{{ m2m_field.name }}"
+           class="col-md-3 control-label">{% render_field_verbosename m2m_field.form m2m_field.name %}</label>
     <div class="col-md-9" id="id_{{ m2m_field.name }}">
         <div class="form-group  m2m_{{ m2m_field.name }}">
             {% render_m2m_dict m2m_field.form m2m_field.name as m2m_dict %}
-            <div class="col-md-5">
+            <div class="col-md-6">
                 <label for="id_{{ m2m_field.name }}">已选项</label>
                 <select id="id_{{ m2m_field.name }}" class="form-control"
                         name="{{ m2m_field.name }}"
-                        multiple="multiple" style="height: 300px;">
+                        multiple="multiple" style="height: 250px;">
 
                     {% for opt in m2m_dict.selected %}
                         <option{% for key in m2m_field.filter_args %}
@@ -18,26 +31,15 @@
                     {% endfor %}
                 </select>
             </div>
-
-            <div class="col-md-2 filter">
-                {% if m2m_field.filter_args %}
-                    <label>筛选条件</label>
-                    {% for field in m2m_field.filter_form %}
-                        {% bootstrap_field field %}
-                    {% endfor %}
-                {% endif %}
-            </div>
-
-
-            <div class="col-md-5">
+            <div class="col-md-6">
                 <label for="id_{{ m2m_field.name }}_choices">待选项</label>
                 <select id="id_{{ m2m_field.name }}_choices" class="form-control"
-                        name="{{ m2m_field.name }}_choices" multiple="multiple" style="height: 300px;"
-                {% for opt in m2m_dict.choices %}
-                    <option{% for key in m2m_field.filter_args %}
-                    {{ key }}="{% render_obj_value opt m2m_dict key %}"{% endfor %} value="{{ opt.id }}"
-                    >{{ opt }}</option>
-                {% endfor %}
+                        name="{{ m2m_field.name }}_choices" multiple="multiple" style="height: 250px;">
+                    {% for opt in m2m_dict.choices %}
+                        <option{% for key in m2m_field.filter_args %}
+                        {{ key }}="{% render_obj_value opt m2m_dict key %}"{% endfor %} value="{{ opt.id }}"
+                        >{{ opt }}</option>
+                    {% endfor %}
                 </select>
             </div>
         </div>

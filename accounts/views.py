@@ -7,7 +7,7 @@ from django.db.models import ObjectDoesNotExist
 from django.shortcuts import render, redirect
 from django.core.urlresolvers import reverse
 from django.contrib.auth import authenticate, login, logout
-from accounts.auth import User
+from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -19,8 +19,8 @@ from guardian.decorators import permission_required_or_403
 from guardian.shortcuts import assign_perm
 from utils.check_code import create_validate_code
 
-from . import forms
-from . import models
+from accounts import forms
+from main.forms import TeacherChangeForm, SupervisorForm
 import main.models as main_models
 from utils.search_queryset import SearchQuerySet
 
@@ -272,7 +272,7 @@ class GroupView(View):
 
 
 class GroupChangeView(View):
-    template_name = 'accounts/group_edit.html'
+    template_name = 'form_edit.html'
 
     @method_decorator(permission_required_or_403('accounts.change_user', accept_global_perms=True))
     def get(self, request, pk):
@@ -316,12 +316,20 @@ class GroupChangeView(View):
 
 
 class GroupAddView(View):
-    template_name = 'accounts/group_edit.html'
+    template_name = 'form_edit.html'
 
     @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def get(self, request):
+        data = {}
+        form = forms.GroupForm()
+        data['form'] = form
 
-        data = {'form': forms.GroupForm()}
+        data['m2m_field'] = {
+            'name': 'permissions',
+            'form': form,
+            'filter_args': form.filter_fields,
+            'filter_form': (getattr(form, field) for field in form.filter_fields)
+        }
         return render(request, self.template_name, data)
 
     @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
@@ -421,7 +429,7 @@ class TeacherInfoView(View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = forms.TeacherChangeForm(instance=request.user.teacher_info)
+            form = TeacherChangeForm(instance=request.user.teacher_info)
 
         data['form'] = form
         data['is_teacher'] = True
@@ -430,7 +438,7 @@ class TeacherInfoView(View):
 
     @method_decorator(login_required)
     def post(self, request):
-        form = forms.TeacherChangeForm(data=request.POST, instance=request.user.teacher_info)
+        form = TeacherChangeForm(data=request.POST, instance=request.user.teacher_info)
         if form.is_valid():
             form.save()
 
@@ -449,7 +457,7 @@ class SupervisorInfoView(View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = forms.SupervisorForm(add=False, branch=request.user.branch, instance=request.user.supervisor_info)
+            form = SupervisorForm(add=False, branch=request.user.branch, instance=request.user.supervisor_info)
 
         data['form'] = form
         data['is_supervisor'] = True
@@ -458,8 +466,8 @@ class SupervisorInfoView(View):
 
     @method_decorator(login_required)
     def post(self, request):
-        form = forms.SupervisorForm(data=request.POST, add=False, branch=request.user.branch,
-                                    instance=request.user.supervisor_info)
+        form = SupervisorForm(data=request.POST, add=False, branch=request.user.branch,
+                              instance=request.user.supervisor_info)
         if form.is_valid():
             form.save()
 
@@ -469,142 +477,3 @@ class SupervisorInfoView(View):
             return redirect(url)
 
         return self.get(request, form)
-
-
-class TeacherAddView(View):
-    template_name = 'base_add.html'
-
-    @method_decorator(permission_required_or_403('accounts.add_teacher', accept_global_perms=True))
-    def get(self, request, form=None):
-        data = {}
-        if not form:
-            form = forms.TeacherForm()
-
-        data['form'] = form
-        data['add_teacher'] = True
-
-        data['m2m_field'] = {
-            'name': 'grades',
-            'form': form,
-            'filter_args': form.filter_fields,
-            'filter_form': (getattr(form, field) for field in form.filter_fields)
-        }
-
-        return render(request, self.template_name, data)
-
-    @method_decorator(permission_required_or_403('accounts.add_teacher', accept_global_perms=True))
-    def post(self, request):
-        form = forms.TeacherForm(request.POST)
-        if form.is_valid():
-            form.save()
-            teacher = form.save(commit=False)
-            teacher.save()
-            form.save_m2m()
-
-            msg = 'Succeed to add a new teacher'
-            url = reverse('accounts:teacher_add')
-            messages.add_message(request, messages.SUCCESS, msg)
-            return redirect(url)
-
-        return self.get(request, form)
-
-
-class SupervisorAddView(View):
-    template_name = 'base_add.html'
-
-    @method_decorator(permission_required_or_403('accounts.add_supervisor', accept_global_perms=True))
-    def get(self, request, form=None):
-        data = {}
-        if not form:
-            form = forms.SupervisorForm(branch=request.user.branch)
-
-        data['form'] = form
-        data['add_supervisor'] = True
-
-        return render(request, self.template_name, data)
-
-    @method_decorator(permission_required_or_403('accounts.add_supervisor', accept_global_perms=True))
-    def post(self, request):
-        form = forms.SupervisorForm(request.POST)
-        if form.is_valid():
-            supervisor = form.save(commit=False)
-            supervisor.save()
-            form.save_m2m()
-
-            msg = 'Succeed to add a new supervisor'
-            url = reverse('accounts:supervisor_add')
-            messages.add_message(request, messages.SUCCESS, msg)
-            return redirect(url)
-
-        return self.get(request, form)
-
-
-class TeacherChangeView(View):
-    template_name = 'form_edit.html'
-    form = forms.TeacherChangeForm
-
-    @method_decorator(permission_required_or_403('accounts.change_teacher', accept_global_perms=True))
-    def get(self, request, pk, form=None):
-        data = {}
-        try:
-            teacher = models.Teacher.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-
-        if request.user.perm_obj.has_perm('change_teacher', teacher):
-            if not form:
-                form = self.form(instance=teacher)
-
-            data['form'] = form
-
-            return render(request, self.template_name, data)
-        else:
-            return HttpResponseForbidden(content='你没有权限')
-
-    @method_decorator(permission_required_or_403('accounts.change_teacher', accept_global_perms=True))
-    def post(self, request, pk):
-        try:
-            teacher = models.Teacher.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        print(request.POST.getlist('grades'))
-        if request.user.perm_obj.has_perm('main.change_teacher', teacher):
-
-            form = self.form(request.POST, instance=teacher, add=False)
-            if form.is_valid():
-                teacher = form.save(commit=False)
-                update_fields = form.changed_data
-
-                if 'grades' in update_fields:
-                    update_fields.remove('grades')
-
-                teacher.save(update_fields=update_fields)
-                form.save_m2m()
-
-                url = reverse('accounts:teachers')
-                msg = 'Succeed to update teacher details'
-                messages.add_message(request, messages.SUCCESS, msg)
-                return redirect(url)
-            print(form.errors)
-            return self.get(request, pk, form=form)
-        else:
-            return HttpResponseForbidden(content='你没有权限')
-
-
-class TeachersView(View):
-    template_name = 'main/obj_list_js.html'
-    fields = ['name', 'sex', 'age', 'subject', 'branch', 'work_type', 'mobile']
-
-    @method_decorator(permission_required_or_403('accounts.add_teacher', accept_global_perms=True))
-    def get(self, request):
-        data = {}
-
-        branch = request.user.branch
-        items = models.Teacher.objects.filter(branch=branch) if branch else models.Teacher.objects.all()
-
-        data['items'] = items
-        data['title'] = ('教师列表', 'Teacher List')
-        data['fields'] = self.fields
-        data['model'] = models.Teacher
-
-        return render(request, self.template_name, data)

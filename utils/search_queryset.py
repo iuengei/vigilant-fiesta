@@ -93,4 +93,4 @@ class SearchQuerySet(object):
 
     def result(self):
         """返回查询结果的Queryset对象"""
-        return self.query_sets.filter(self.search_for()) if self.search_for() else self.query_sets
+        return self.query_sets.filter(self.search_for()) if self.search_for() else self.query_sets.none()

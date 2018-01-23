@@ -32,7 +32,10 @@ def db_init():
         #     print("table did not exist")
         #
         # curs.execute('CREATE TABLE ' + str(table_name))
-        load_db(curs, sql_file, conn)
+        try:
+            load_db(curs, sql_file, conn)
+        except sqlite3.IntegrityError:
+            continue
 
     conn.close()
 

@@ -54,12 +54,14 @@ class StudentTeacherForm(forms.ModelForm):
         branch = instance.branch
         grade = instance.grade
         self.fields['teachers'] = forms.ModelMultipleChoiceField(
-            queryset=accounts_models.Teacher.objects.filter(
-                branch=branch) if branch else accounts_models.Teacher.objects.all())
+            queryset=models.Teacher.objects.filter(
+                branch=branch) if branch else models.Teacher.objects.all(), required=False)
 
-        self.grades = forms.IntegerField(initial=grade, widget=forms.Select(choices=models.grade_choices)).get_bound_field(self, 'grades')
+        self.grades = forms.IntegerField(initial=grade,
+                                         widget=forms.Select(choices=models.grade_choices)).get_bound_field(self,
+                                                                                                            'grades')
         self.subject = forms.IntegerField(
-            widget=forms.Select(choices=accounts_models.Teacher.subject_choices)).get_bound_field(self, 'subject')
+            widget=forms.Select(choices=models.Teacher.subject_choices)).get_bound_field(self, 'subject')
 
     class Meta:
         model = models.Student
@@ -67,6 +69,8 @@ class StudentTeacherForm(forms.ModelForm):
 
     def clean(self):
         branch_balanced = True
+        if self.cleaned_data.get('teachers') is None:
+            return self.cleaned_data
         for teacher in self.cleaned_data.get('teachers'):
             if teacher.branch != self.instance.branch:
                 branch_balanced = False
@@ -95,59 +99,38 @@ class MyDateTimeWidget(widgets.MultiWidget):
         return [None, None]
 
 
-class CourseChainForm(forms.ModelForm):
-    def __init__(self, *args, course_plan, **kwargs):
-        super(CourseChainForm, self).__init__(*args, **kwargs)
-
-        self.fields['teacher'].queryset = course_plan.student.teachers
-
-        data = args[0] if args else None
-        self.course_plan = CoursePlanForm(data, instance=course_plan, prefix='course_plan')
+class TeacherForm(forms.ModelForm):
+    filter_fields = []
 
     class Meta:
-        model = models.CoursesRecord
+        model = models.Teacher
         fields = '__all__'
-        exclude = ['student', 'status']
 
 
-class CoursePlanForm(forms.ModelForm):
-    def __init__(self, *args, user=None, **kwargs):
-        super(CoursePlanForm, self).__init__(*args, **kwargs)
-
-        if user:
-            students = get_objects_for_user(user, 'main.change_student', accept_global_perms=False)
-            branch = user.branch
-
-            self.base_fields['student'].queryset = students
-
-            branch_disabled = True if branch else False
-            self.branch = forms.IntegerField(widget=forms.Select(choices=models.branch_choices),
-                                             initial=branch, disabled=branch_disabled).get_bound_field(self, 'branch')
-        else:
-            for name, field in self.fields.items():
-                field.disabled = True
-
-    class Meta:
-        model = models.CoursePlan
-        fields = '__all__'
-        exclude = ['create_time', 'status']
-
-
-class LessonPlanForm(forms.ModelForm):
-    content = forms.CharField(min_length=246, max_length=1024, widget=forms.Textarea, required=False)
-
+class TeacherChangeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        super(LessonPlanForm, self).__init__(*args, **kwargs)
-
-    def clean(self):
-        content = self.cleaned_data.get('content')
-        file = self.cleaned_data.get('file')
-
-        if not content and not file:
-            raise forms.ValidationError(_("Content and file can't both be empty."), code='invalid')
-
-        return self.cleaned_data
+        super(TeacherChangeForm, self).__init__(*args, **kwargs)
+        for field in self.fields:
+            if field != 'mobile':
+                self.fields[field].disabled = True
 
     class Meta:
-        model = models.LessonPlan
-        fields = ['title', 'content', 'file']
+        model = models.Teacher
+        fields = ['sex', 'age', 'subject', 'mobile', 'grades']
+
+
+class SupervisorForm(forms.ModelForm):
+    branch = forms.IntegerField(widget=forms.Select)
+
+    def __init__(self, *args, branch=0, add=True, **kwargs):
+        super(SupervisorForm, self).__init__(*args, **kwargs)
+        self.fields['branch'].widget.choices = [
+            models.User.branch_choices[branch]] if branch else models.User.branch_choices
+        if not add:
+            self.fields['id_card'].disabled = True
+            self.fields.pop('name')
+            self.fields.pop('branch')
+
+    class Meta:
+        model = models.Supervisor
+        fields = '__all__'

@@ -9,12 +9,6 @@ urlpatterns = [
     url(r'^profile/supervisor/$', views.SupervisorInfoView.as_view(), name='supervisor_info'),
     url(r'^profile/password/$', views.ChangePasswordView.as_view(), name='change_password'),
 
-    url(r'^supervisors/add/$', views.SupervisorAddView.as_view(), name='supervisor_add'),
-    url(r'^teachers/add/$', views.TeacherAddView.as_view(), name='teacher_add'),
-
-    url(r'^teachers/(?P<pk>(-)?[0-9]+)/change/$', views.TeacherChangeView.as_view(), name='teacher_edit'),
-    url(r'^teachers/$', views.TeachersView.as_view(), name='teachers'),
-
     url(r'^users/$', views.UsersView.as_view(), name='users'),
     url(r'^users/(?P<pk>(-)?[0-9]+)/$', views.UserView.as_view(), name='user'),
     url(r'^users/(?P<pk>(-)?[0-9]+)/change/$', views.UserChangeView.as_view(), name='user_edit'),

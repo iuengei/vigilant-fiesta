@@ -18,12 +18,12 @@
         <ul class="nav nav-tabs">
             {% if perms.accounts.add_teacher %}
                 <li role="presentation" {% if add_teacher %} class="active" {% endif %}><a
-                        href="{% url 'accounts:teacher_add' %}">Add Teacher</a></li>
+                        href="{% url 'main:teacher_add' %}">Add Teacher</a></li>
             {% endif %}
 
             {% if perms.accounts.add_supervisor %}
                 <li role="presentation" {% if add_supervisor %} class="active" {% endif %}><a
-                        href="{% url 'accounts:supervisor_add' %}">Add Supervisor</a></li>
+                        href="{% url 'main:supervisor_add' %}">Add Supervisor</a></li>
             {% endif %}
 
             {% if request.user.is_superuser %}
@@ -37,7 +37,7 @@
             {% endif %}
         </ul>
         <br>
-        <div class="col-md-10 col-md-offset-1 form-horizontal">
+        <div class="form-horizontal">
             <form method="post" action="">
                 {% csrf_token %}
                 {% if m2m_field %}

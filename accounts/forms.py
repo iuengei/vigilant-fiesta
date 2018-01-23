@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from django import forms
-from accounts.auth import User
+from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate
-from accounts import models
 
 
 class LoginForm(forms.Form):
@@ -67,41 +66,7 @@ class ChangePasswordForm(forms.Form):
             raise forms.ValidationError('username and password does not match')
 
 
-class TeacherForm(forms.ModelForm):
-    filter_fields = []
 
-    class Meta:
-        model = models.Teacher
-        fields = '__all__'
-
-
-class TeacherChangeForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super(TeacherChangeForm, self).__init__(*args, **kwargs)
-        for field in self.fields:
-            if field != 'mobile':
-                self.fields[field].disabled = True
-
-    class Meta:
-        model = models.Teacher
-        fields = ['sex', 'age', 'subject', 'mobile', 'grades']
-
-
-class SupervisorForm(forms.ModelForm):
-    branch = forms.IntegerField(widget=forms.Select)
-
-    def __init__(self, *args, branch=0, add=True, **kwargs):
-        super(SupervisorForm, self).__init__(*args, **kwargs)
-        self.fields['branch'].widget.choices = [
-            models.User.branch_choices[branch]] if branch else models.User.branch_choices
-        if not add:
-            self.fields['id_card'].disabled = True
-            self.fields.pop('name')
-            self.fields.pop('branch')
-
-    class Meta:
-        model = models.Supervisor
-        fields = '__all__'
 
 
 class GroupForm(forms.ModelForm):

@@ -34,10 +34,10 @@
         <!-- Nav tabs -->
         <ul class="nav nav-tabs" role="tablist">
             <li role="presentation">
-                <a href="{% url 'main:courses' %}">完成事项</a>
+                <a href="{% url 'course:list' %}">完成事项</a>
             </li>
             <li role="presentation" class="active">
-                <a href="{% url 'main:course_plan' %}">待排事项&nbsp;
+                <a href="{% url 'course:plan' %}">待排事项&nbsp;
                     {% if plan_count %}<span class="badge">{{ plan_count }}</span>{% endif %}
                 </a>
             </li>
@@ -109,7 +109,7 @@
                                 </a>
                                 <ul class="dropdown-menu actions_menu">
                                     {% if not item.status %}
-                                        <li><a class="chain" href="{% url 'main:course_chain' item.pk %}">排课</a></li>
+                                        <li><a class="chain" href="{% url 'course:chain' item.pk %}">排课</a></li>
                                         <li><a class="delete">删除</a></li>
                                     {% else %}
                                         <li><a class="copy">复制</a></li>
@@ -164,7 +164,7 @@
 
         function getStudentsData() {
             $.ajax({
-                url: "{% url 'main:get_plan_ajax' %}",
+                url: "{% url 'course:get_plan_ajax' %}",
                 type: 'GET',
                 dataType: 'json',
                 async: true,
@@ -224,7 +224,7 @@
         function coursePlanDelete(id) {
             var result;
             $.ajax({
-                url: "{% url 'main:courseplan_delete' %}",
+                url: "{% url 'course:plan_delete' %}",
                 type: 'GET',
                 data: {item_id: id},
                 dataType: 'json',

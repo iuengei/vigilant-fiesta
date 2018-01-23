@@ -33,10 +33,10 @@
         <form method="post" class="form-horizontal">
         {% csrf_token %}
         {% if edit_detail %}
-            {% bootstrap_form form layout='horizontal' %}
+            {% bootstrap_form form layout='horizontal' horizontal_label_class='col-md-2' horizontal_field_class='col-md-9 '%}
             <br>
             <div class="form-group">
-                <label for="id_{{ parents_formset.prefix }}" class="col-md-3 control-label">家长信息</label>
+                <label for="id_{{ parents_formset.prefix }}" class="col-md-2 control-label">家长信息</label>
                 <div class="col-md-9">
                     <table id="id_{{ parents_formset.prefix }}" class="table">
                         {{ parents_formset.management_form }}

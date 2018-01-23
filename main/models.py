@@ -3,7 +3,7 @@ from django.utils.timezone import datetime
 from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_delete, post_delete
 from guardian.shortcuts import assign_perm
-from accounts.auth import User, Group
+from accounts.models import User, Group
 
 # Create your models here.
 branch_choices = [(1, '郑大校区'),
@@ -46,6 +46,77 @@ grade_choices = [(1, '小一'),
 course_status_choices = ((1, 'finished'), (2, 'deleted'), (3, 'waiting'), (4, 'reschedule'))
 
 
+class Teacher(models.Model):
+    branch_choices = [(1, '郑大校区'),
+                      (2, '省实验校区'),
+                      (3, '未来路校区'),
+                      (4, '洛阳校区'),
+                      (5, '碧沙岗校区'),
+                      (6, '郑东校区'),
+                      (7, '北环校区'),
+                      (8, '外国语校区')]
+    subject_choices = [(1, '语文'),
+                       (2, '数学'),
+                       (3, '英语'),
+                       (4, '物理'),
+                       (5, '化学'),
+                       (6, '生物'),
+                       (7, '历史'),
+                       (8, '地理'),
+                       (9, '政治')]
+    sex_choices = [(0, '女'), (1, '男')]
+    id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
+    name = models.CharField(max_length=32, verbose_name='姓名')
+    sex = models.SmallIntegerField(choices=sex_choices, verbose_name='性别')
+    age = models.PositiveSmallIntegerField(verbose_name='年龄')
+    branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
+    work_type = models.IntegerField(choices=[(1, '专职'), (0, '兼职')], verbose_name='类别')
+    grades = models.ManyToManyField('main.Grade', verbose_name='辅导年级')
+    subject = models.SmallIntegerField(choices=subject_choices, verbose_name='学科')
+    mobile = models.CharField(max_length=32, null=True, blank=True, verbose_name='电话')
+
+    class Meta:
+        permissions = (
+            ('view_teacher', 'Can view teacher'),
+        )
+
+    def __str__(self):
+        return '<' + self.get_subject_display() + '>' + self.name
+
+    def get_str(self, field):
+        for each in self._meta.many_to_many:
+            if field == each.name:
+                _dict = {each.related_query_name(): self.id}
+                _list = list(each.related_model.objects.filter(**_dict).values_list('id', flat=True))
+                return '-'.join([str(i) for i in _list])
+
+
+class Supervisor(models.Model):
+    sex_choices = [(0, '女'), (1, '男')]
+    id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
+    name = models.CharField(max_length=32)
+    sex = models.SmallIntegerField(choices=sex_choices)
+    age = models.SmallIntegerField()
+    branch_choices = [(1, '郑大校区'),
+                      (2, '省实验校区'),
+                      (3, '未来路校区'),
+                      (4, '洛阳校区'),
+                      (5, '碧沙岗校区'),
+                      (6, '郑东校区'),
+                      (7, '北环校区'),
+                      (8, '外国语校区')]
+    branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
+    mobile = models.CharField(max_length=32)
+
+    class Meta:
+        permissions = (
+            ('view_supervisor', 'Can view supervisor'),
+        )
+
+    def __str__(self):
+        return self.name
+
+
 class Grade(models.Model):
     grade_choices = [(1, '小一'),
                      (2, '小二'),
@@ -66,7 +137,7 @@ class Grade(models.Model):
 
 
 class Interview(models.Model):
-    '''面试登记表'''
+    """面试登记表"""
     name = models.CharField(max_length=32, verbose_name='姓名')
     sex = models.IntegerField(choices=sex_choices, verbose_name='性别')
     age = models.IntegerField(verbose_name='年龄')
@@ -85,84 +156,8 @@ class Interview(models.Model):
         )
 
 
-class LessonPlan(models.Model):
-    '''教案表'''
-    title = models.CharField(max_length=32)
-    author = models.ForeignKey('accounts.User', to_field='teacher_info')
-    content = models.TextField(max_length=1024, null=True, blank=True)
-    file = models.FileField(upload_to='upload/LessonPlan', null=True, blank=True)
-
-    @receiver(post_save, sender='main.LessonPlan')
-    def assign_perm(sender, instance=None, created=False, **kwargs):
-        if created:
-            users = User.objects.filter(duty=0, branch=instance.author.branch)
-            if users:
-                for user in users:
-                    assign_perm('main.change_lessonplan', user, instance)
-            assign_perm('main.change_lessonplan', instance.author, instance)
-
-    class Meta:
-        permissions = (
-            ('view_lessonplan', 'Can view lesson plan'),
-        )
-
-
-class CoursesRecord(models.Model):
-    '''课程记录表'''
-    student = models.OneToOneField('CoursePlan', verbose_name='学生')
-    teacher = models.ForeignKey('accounts.Teacher', verbose_name='教师')
-    attendance = models.SmallIntegerField(null=True, blank=True, choices=attendance_choices, verbose_name='考勤')
-    lesson_plan = models.ForeignKey('LessonPlan', null=True, blank=True, verbose_name='教案')
-    lesson_time = models.DateTimeField(default=datetime.now(), verbose_name='上课时间')
-    create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
-    status = models.SmallIntegerField(choices=course_status_choices, default=3, verbose_name='状态')
-
-    @receiver(post_delete, sender='main.CoursesRecord')
-    def related_plan_delete(sender, instance=None, **kwargs):
-        instance.student.delete()
-
-    class Meta:
-        permissions = (
-            ('view_coursesrecord', 'Can view courses record'),
-        )
-
-    def status_delete(self):
-        self.status = 2
-        self.save()
-
-    def status_reschedule(self):
-        self.status = 4
-        self.save()
-
-    def action(self, type):
-        switcher = {
-            'delete': self.status_delete,
-            'reschedule': self.status_reschedule
-        }
-        return switcher[type]()
-
-
-class CoursePlan(models.Model):
-    '''课程计划表'''
-    student = models.ForeignKey('Student', verbose_name='学生')
-    grade = models.SmallIntegerField(choices=grade_choices, verbose_name='年级')
-    subject = models.SmallIntegerField(choices=subject_choices, verbose_name='科目')
-    plan_time = models.DateTimeField(default=datetime.now(), verbose_name='计划时间')
-    create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
-    hours = models.SmallIntegerField(default=2, verbose_name='课时')
-    status = models.BooleanField(default=False, verbose_name='完成')
-
-    class Meta:
-        permissions = (
-            ('view_courseplan', 'Can view course plan'),
-        )
-
-    def __str__(self):
-        return '<' + self.get_grade_display() + '>' + self.student.name
-
-
 class Tag(models.Model):
-    '''标签表'''
+    """标签表"""
     content = models.CharField(max_length=256)
     to = models.ForeignKey('Student')
     create_time = models.DateTimeField(auto_now_add=True)
@@ -184,14 +179,14 @@ class Tag(models.Model):
 
 
 class Student(models.Model):
-    '''学生信息表'''
+    """学生信息表"""
     id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
     name = models.CharField(max_length=32, verbose_name='姓名')
     sex = models.SmallIntegerField(choices=sex_choices, verbose_name='性别')
     branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
     grade = models.SmallIntegerField(choices=grade_choices, verbose_name='年级')
-    teachers = models.ManyToManyField('accounts.Teacher', null=True, blank=True, verbose_name='授课教师')
-    supervisor = models.ForeignKey('accounts.Supervisor', verbose_name='班主任')
+    teachers = models.ManyToManyField('Teacher', null=True, blank=True, verbose_name='授课教师')
+    supervisor = models.ForeignKey('Supervisor', verbose_name='班主任')
     img = models.ImageField(upload_to='upload/Gravatar/student', null=True, blank=True)
 
     @staticmethod
@@ -200,7 +195,7 @@ class Student(models.Model):
         if created:
             supervisor = instance.supervisor.user_info
             assign_perm('change_student', supervisor, instance)
-            assign_perm('change_student', Group.objects.get('User_'+str(instance.branch)), instance)
+            assign_perm('change_student', Group.objects.get(name='User_' + str(instance.branch)), instance)
 
     class Meta:
         verbose_name = '学生信息'
@@ -219,7 +214,7 @@ class Student(models.Model):
 
 
 class Parent(models.Model):
-    '''家长表'''
+    """家长表"""
     name = models.CharField(max_length=32, verbose_name='姓名')
     sex = models.SmallIntegerField(choices=[(1, '父亲'), (0, '母亲')], verbose_name='关系')
     mobile = models.CharField(max_length=32, verbose_name='联系方式')
