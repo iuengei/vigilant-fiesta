@@ -16,7 +16,7 @@
 
     <div class="content_wrapper row">
         <ul class="nav nav-tabs">
-            {% if perms.accounts.add_teacher %}
+            {% if perms.achievement.add_achievement %}
                 <li role="presentation" {% if is_achievement %} class="active" {% endif %}><a
                         href="{% url 'achievement:achievement_add' %}">Add Achievement</a></li>
                 <li role="presentation" {% if is_test %} class="active" {% endif %}><a

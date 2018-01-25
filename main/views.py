@@ -33,7 +33,10 @@ class StudentsView(PermQuerysetMixin, View):
     model = models.Student
     fields = ['name', 'sex', 'grade', 'branch', 'supervisor']
     permission_required = ['main.change_student', 'main.view_student']
-    get_objects_for_user_extra_kwargs = {'any_perm': True}
+    get_objects_for_user_extra_kwargs = {
+        'any_perm': True,
+        'accept_global_perms': False,
+    }
 
     def get(self, request):
         data = self.base_dict()
@@ -123,7 +126,10 @@ class StudentChangeView(PermRequiredMixin, View):
 
             parents_formset.save()
 
-            url = reverse('main:student_edit', args=(pk,))
+            url = request.GET.get('next', None)
+            if url is None:
+                url = reverse('main:student', args=(pk,))
+
             msg = 'Succeed to update student details'
             messages.add_message(request, messages.SUCCESS, msg)
             return redirect(url)
@@ -170,10 +176,13 @@ class StudentTeacherView(PermRequiredMixin, View):
 
             student.save()
             form.save_m2m()
-            url = reverse('main:student_teacher_edit', args=(pk,))
+            url = request.GET.get('next', None)
+            if url is None:
+                url = reverse('main:student', args=(pk,))
             msg = 'Succeed to update student details'
             messages.add_message(request, messages.SUCCESS, msg)
             return redirect(url)
+
         return self.get(request, pk, form=form)
 
 
@@ -185,7 +194,7 @@ class StudentAddView(PermRequiredMixin, View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = forms.StudentForm(user=request.user)
+            form = forms.StudentAddForm(user=request.user)
 
         data['form'] = form
         data['add_student'] = True
@@ -193,7 +202,7 @@ class StudentAddView(PermRequiredMixin, View):
         return render(request, self.template_name, data)
 
     def post(self, request):
-        form = forms.StudentForm(request.POST, user=request.user)
+        form = forms.StudentAddForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             student = form.save(commit=False)
@@ -223,7 +232,7 @@ class TeacherAddView(PermRequiredMixin, View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = forms.TeacherForm()
+            form = forms.TeacherForm(user=request.user)
 
         data['form'] = form
         data['add_teacher'] = True

@@ -57,7 +57,7 @@
                     <li class=""><a href="{% url 'course:list' %}">课程</a></li>
                     <li class=""><a href="{% url 'achievement:list' %}">测试</a></li>
                     <li class="nav_students_list"><a href="{% url 'main:students' %}">学生</a></li>
-                    {% if perms.accounts.add_teacher %}
+                    {% if request.user.is_staff %}
                         <li class="nav_teachers_list"><a href="{% url 'main:teachers' %}">教师</a></li>
                         {% if perms.main.add_lessonplan %}
                             <li class=""><a href="{% url 'course:lessonplans' %}">教案</a></li>
@@ -68,7 +68,7 @@
                                aria-expanded="false">教研 <span class="caret"></span></a>
                             <ul class="dropdown-menu">
                                 <li><a href="{% url 'main:interviews' %}">招聘</a></li>
-                                <li><a href="{% url 'main:interviews' %}">回访</a></li>
+                                <li><a href="">回访</a></li>
                             </ul>
                         </li>
                     {% endif %}

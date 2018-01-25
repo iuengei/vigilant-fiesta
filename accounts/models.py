@@ -107,9 +107,6 @@ class UserProfileManager(BaseUserManager):
         )
 
         user.set_password(password)
-
-        if user.duty == 0:
-            user.is_admin = True
         user.save(using=self._db)
 
         return user
@@ -120,6 +117,7 @@ class UserProfileManager(BaseUserManager):
                                 name=name
                                 )
         user.is_admin = True
+        user.is_superuser = True
         user.save(using=self._db)
         return user
 

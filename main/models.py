@@ -158,6 +158,10 @@ class Grade(models.Model):
     def __str__(self):
         return self.get_id_display()
 
+    @classmethod
+    def perm_queryset(cls, queryset, user):
+        return queryset
+
 
 class Interview(models.Model):
     """面试登记表"""

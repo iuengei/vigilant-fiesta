@@ -162,3 +162,8 @@ def render_perm_check(request, obj, action='add', perm=None):
 
     return request.user.perm_obj.has_perm(perm, obj) if pk else \
         (perm in request.user.get_group_permissions() or request.user.has_perm(perm, obj=obj))
+
+
+@register.simple_tag
+def render__all__error(_form):
+    return _form.errors.get('__all__', None)

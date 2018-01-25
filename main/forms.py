@@ -7,7 +7,7 @@ from django.forms.utils import to_current_timezone
 from django.forms.models import inlineformset_factory
 from django.utils.translation import ugettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
-from utils.mixins.form import FormM2MFieldMixin, FormFieldDisabledMixin, FormFieldQuerysetFilterMixin, FormChainMixin
+from utils.mixins.form import FormM2MFieldMixin, FormFieldDisabledMixin, FormLimitChoicesMixin, FormChainMixin
 
 
 class TagForm(forms.Form):
@@ -16,7 +16,7 @@ class TagForm(forms.Form):
     author = forms.IntegerField(widget=forms.HiddenInput)
 
 
-class StudentForm(FormFieldQuerysetFilterMixin,
+class StudentForm(FormLimitChoicesMixin,
                   FormFieldDisabledMixin,
                   FormChainMixin,
                   forms.ModelForm):
@@ -31,30 +31,11 @@ class StudentForm(FormFieldQuerysetFilterMixin,
         exclude = ['img', 'teachers']
 
 
-class StudentAddForm(FormFieldQuerysetFilterMixin,
+class StudentAddForm(FormLimitChoicesMixin,
                      forms.ModelForm):
-    branch = forms.IntegerField(widget=forms.Select)
-
-    def __init__(self, *args, user, add=True, **kwargs):
-        super(StudentForm, self).__init__(*args, **kwargs)
-
-        branch = user.branch
-        self.fields['branch'].widget.choices = [
-            models.User.branch_choices[branch]] if branch else models.User.branch_choices
-
-        if branch:
-            duty = user.duty
-            self.fields['supervisor'] = forms.ModelChoiceField(queryset=accounts_models.Supervisor.objects.filter(
-                user_info=user) if duty else accounts_models.Supervisor.objects.filter(branch=branch))
-
-        instance = kwargs.get('instance', None)
-        data = args[0] if args else None
-        self.parents = inlineformset_factory(self._meta.model, models.Parent,
-                                             fields='__all__', extra=0)(data, instance=instance, prefix='parents')
-
-        if not add:
-            for field in ['id_card', 'name', 'branch', 'sex']:
-                self.fields[field].disabled = True
+    other_forms = {
+        'parents': inlineformset_factory(models.Student, models.Parent, fields='__all__', extra=0),
+    }
 
     class Meta:
         model = models.Student
@@ -62,7 +43,7 @@ class StudentAddForm(FormFieldQuerysetFilterMixin,
         exclude = ['img', 'teachers']
 
 
-class StudentTeacherForm(FormFieldQuerysetFilterMixin,
+class StudentTeacherForm(FormLimitChoicesMixin,
                          FormM2MFieldMixin,
                          forms.ModelForm):
     m2m_filed = 'teachers'
@@ -80,11 +61,12 @@ class StudentTeacherForm(FormFieldQuerysetFilterMixin,
         for teacher in self.cleaned_data.get('teachers'):
             if teacher.branch != self.instance.branch:
                 branch_balanced = False
-                break
+                self.add_error('teachers',
+                               forms.ValidationError(_('student and teacher %s should in same branch.'),
+                                                     code='invalid',
+                                                     params=(teacher,)))
         if branch_balanced:
             return self.cleaned_data
-        else:
-            raise forms.ValidationError('student and teachers should in same branch.')
 
 
 class MyDateTimeWidget(widgets.MultiWidget):
@@ -105,9 +87,11 @@ class MyDateTimeWidget(widgets.MultiWidget):
         return [None, None]
 
 
-class TeacherForm(FormM2MFieldMixin,
+class TeacherForm(FormLimitChoicesMixin,
+                  FormM2MFieldMixin,
                   forms.ModelForm):
     m2m_filed = 'grades'
+    fields_filter = ['branch']
 
     class Meta:
         model = models.Teacher

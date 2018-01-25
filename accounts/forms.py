@@ -15,7 +15,7 @@ class LoginForm(forms.Form):
 
 class RegisterForm(forms.Form):
     email = forms.EmailField(max_length=256, label='邮箱')
-    username = forms.CharField(max_length=256, label='姓名')
+    name = forms.CharField(max_length=256, label='姓名')
     password = forms.CharField(max_length=256, widget=forms.PasswordInput, label='密码')
     password_confirm = forms.CharField(max_length=256, widget=forms.PasswordInput, label='输入相同密码')
     duty = forms.IntegerField(initial=0, widget=forms.HiddenInput, label='职位')

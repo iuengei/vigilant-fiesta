@@ -3,11 +3,11 @@ from course import models
 from django.utils.timezone import timedelta
 from django.utils.translation import ugettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
-from utils.mixins.form import FormChainMixin, FormFieldQuerysetFilterMixin, FormFieldDisabledMixin
+from utils.mixins.form import FormChainMixin, FormLimitChoicesMixin, FormFieldDisabledMixin
 from functools import partialmethod
 
 
-class CoursePlanForm(FormFieldQuerysetFilterMixin,
+class CoursePlanForm(FormLimitChoicesMixin,
                      forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super(CoursePlanForm, self).__init__(*args, user=user, **kwargs)

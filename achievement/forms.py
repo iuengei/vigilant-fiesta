@@ -1,7 +1,7 @@
 from django.forms import forms
 from django.forms.models import ModelForm
 from achievement import models
-from utils.mixins.form import FormFieldQuerysetFilterMixin
+from utils.mixins.form import FormLimitChoicesMixin
 
 
 class TestForm(ModelForm):
@@ -10,7 +10,8 @@ class TestForm(ModelForm):
         fields = ['name', 'exam_type']
 
 
-class AchievementForm(FormFieldQuerysetFilterMixin, ModelForm):
+class AchievementForm(FormLimitChoicesMixin,
+                      ModelForm):
     class Meta:
         model = models.Achievement
         fields = '__all__'

@@ -61,9 +61,9 @@
                 </thead>
 
                 <tbody class="add_plan_form">
-                <form method="post">
+                <form method="post"{% if form.errors %} class="has-error"{% endif %}>
                     {% csrf_token %}
-                    <tr class="add_form collapse" id="add_form">
+                    <tr class="add_form collapse {% if form.errors %}in{% endif %}" id="add_form">
                         <td></td>
                         <td>{% bootstrap_field branch label=False %}</td>
                         {% for foo in form %}
@@ -74,6 +74,12 @@
                             <button type="submit" class="btn btn-primary">创建</button>
                         </th>
                     </tr>
+                    {% if form.errors %}
+                    <tr>
+                        <td></td>
+                        <td><div class="text-danger">{% render__all__error form %}</div></td>
+                    </tr>
+                    {% endif %}
                 </form>
                 </tbody>
                 <tbody class="items_show">

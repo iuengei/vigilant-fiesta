@@ -135,9 +135,9 @@ class CoursePlanView(PermQuerysetMixin, View):
             plan.save()
             form.save_m2m()
 
-            request.user.add_obj_perm('course.view_courseplan', plan)
-            request.user.add_obj_perm('course.delete_courseplan', plan)
-            assign_perm('change_courseplan', Group.objects.get(name='User_' + str(request.user.branch)), plan)
+            request.user.add_obj_perm('view_courseplan', plan)
+            request.user.add_obj_perm('delete_courseplan', plan)
+            assign_perm('change_courseplan', Group.objects.get(name='User_' + str(plan.student.branch)), plan)
 
             url = reverse('course:plan')
             msg = 'Successfully add a new course plan.'
@@ -370,7 +370,77 @@ class LessonPlanChangeView(PermRequiredMixin, View):
 
 
 def test1(request):
-    from django.utils.datetime_safe import datetime
-    default = datetime.now().minute
-    print(default)
+    import random
+    from main import models as main_models
+    def id_card():
+        id_card = '410323' + str(random.choice(range(1980, 1993))) + str(random.choice(range(1, 13))).rjust(2, '0') + \
+                  str(random.choice(range(1, 31))).rjust(2, '0') + str(random.choice(range(1, 100))).rjust(3, '0') + \
+                  random.choice('0123456789X')
+        return id_card
+
+    for i in range(1, 71):
+        _dict = {'name': '班主任' + str(i),
+                 'sex': random.choice([1, 0]),
+                 'branch': random.choice(range(1, 9)),
+                 'age': random.choice(range(20, 30)),
+                 'id_card': id_card(),
+                 'mobile': random.choice(range(13213102645, 19999999999))}
+        try:
+            main_models.Supervisor.objects.create(**_dict)
+        except Exception as e:
+            print(e)
+            _id_card = id_card()
+            _dict.update({'id_card': _id_card})
+            try:
+                main_models.Supervisor.objects.create(**_dict)
+            except:
+                continue
+
+    supervisor_dict = {}
+
+    for i in range(1, 551):
+        _dict = {'name': '学生' + str(i),
+                 'sex': random.choice(range(0, 2)),
+                 'branch': random.choice(range(1, 9)),
+                 'grade': random.choice(range(1, 13)),
+                 'id_card': id_card()}
+        branch = _dict.get('branch')
+        if branch in supervisor_dict:
+            _dict['supervisor_id'] = random.choice(supervisor_dict[branch])
+        else:
+            supervisor_dict[branch] = main_models.Supervisor.objects.filter(branch=branch).values_list('id',
+                                                                                                       flat=True)
+            _dict['supervisor_id'] = random.choice(supervisor_dict[branch])
+        try:
+            main_models.Student.objects.create(**_dict)
+        except Exception as e:
+            print(e)
+            continue
+
+    for i in range(1, 801):
+        _dict = {'name': '教师' + str(i),
+                 'sex': random.choice([1, 0]),
+                 'branch': random.choice(range(1, 9)),
+                 'age': random.choice(range(20, 51)),
+                 'work_type': random.choice([1, 0]),
+                 'id_card': id_card(),
+                 'subject': random.choice(range(1, 10)),
+                 'mobile': random.choice(range(13213102645, 19999999999))}
+        try:
+            main_models.Teacher.objects.create(**_dict)
+        except Exception as e:
+            print(e)
+            _id_card = id_card()
+            _dict.update({'id_card': _id_card})
+            try:
+                main_models.Teacher.objects.create(**_dict)
+            except:
+                continue
+
+    teacher_count = main_models.Teacher.objects.count()
+    for i in range(1, teacher_count + 1):
+        try:
+            main_models.Teacher.objects.get(id=i).grades.add(random.choice(random.choices(list(range(1, 13)), k=5)))
+        except:
+            continue
     return HttpResponse('test')

@@ -16,12 +16,12 @@
 
     <div class="content_wrapper row">
         <ul class="nav nav-tabs">
-            {% if perms.accounts.add_teacher %}
+            {% if perms.main.add_teacher %}
                 <li role="presentation" {% if add_teacher %} class="active" {% endif %}><a
                         href="{% url 'main:teacher_add' %}">Add Teacher</a></li>
             {% endif %}
 
-            {% if perms.accounts.add_supervisor %}
+            {% if perms.main.add_supervisor %}
                 <li role="presentation" {% if add_supervisor %} class="active" {% endif %}><a
                         href="{% url 'main:supervisor_add' %}">Add Supervisor</a></li>
             {% endif %}

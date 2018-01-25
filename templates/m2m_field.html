@@ -12,7 +12,7 @@
     </div>
 {% endif %}
 
-<div class="form-group">
+<div class="form-group {% if m2m_field.m2m_error %}has-error{% endif %}">
     <label for="id_{{ m2m_field.name }}"
            class="col-md-3 control-label">{% render_field_verbosename m2m_field.form m2m_field.name %}</label>
     <div class="col-md-9" id="id_{{ m2m_field.name }}">
@@ -43,5 +43,10 @@
                 </select>
             </div>
         </div>
+        {% if m2m_field.m2m_error %}
+            {% for error in m2m_field.m2m_error %}
+            <span class="help-block">{{ error }}</span>
+            {% endfor %}
+        {% endif %}
     </div>
 </div>

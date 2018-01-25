@@ -136,10 +136,12 @@ class RegisterView(PermRequiredMixin, View):
 
             duty = form.cleaned_data.pop('duty')
             branch = form.cleaned_data.pop('branch')
+            form.cleaned_data.pop('password_confirm')
 
             user = User.objects.create_user(**form.cleaned_data)
             user.duty = duty
             user.branch = branch
+            user.is_admin = True
             user.save()
 
             user.groups.add(Group.objects.get(name='User'))

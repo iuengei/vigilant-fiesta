@@ -28,7 +28,7 @@ class TestsView(PermQuerysetMixin, View):
 class AchievementsView(PermQuerysetMixin, View):
     template_name = 'obj_list_js.html'
     fields = ['student', 'exam', 'exam_paper', 'score', 'initiator']
-    permission_required = 'achievement.view_student'
+    permission_required = 'main.view_student'
     model = main.models.Student
 
     def get(self, request):

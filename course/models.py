@@ -121,5 +121,7 @@ class CoursePlan(models.Model):
             ('view_courseplan', 'Can view course plan'),
         )
 
+        unique_together =['student', 'subject', 'plan_time']
+
     def __str__(self):
         return '<' + self.get_grade_display() + '>' + self.student.name
