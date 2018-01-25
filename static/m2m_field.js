@@ -3,6 +3,7 @@
  */
 
 function initM2MField(name, filter_args) {
+
     M2MFieldFunc(name);
     //绑定动态筛选
     bindM2MFilterChange(name, filter_args);
@@ -32,12 +33,15 @@ function M2MFieldFunc(prefix) {
 function bindM2MFilterChange(prefix, args) {
     $.each(args, function () {
         $("select[id='id_" + this + "']").on('change', function () {
+
             initM2MFilter(prefix, args)
         })
     })
 }
 function initM2MFilter(prefix, args) {
+
     var choices_opts = $('.m2m_' + prefix + " select[id='id_" + prefix + "_choices']").find('option');
+
     $.each(choices_opts, function () {
         var result = true;
         var opt = $(this);

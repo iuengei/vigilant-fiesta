@@ -98,7 +98,7 @@ def recursive_children(tree):
 @register.simple_tag
 def render_m2m_dict(form, field_name):
     model = form._meta.model
-    filter_args = form.filter_fields
+    filter_args = form.m2m_filter_args
     field = form[field_name]
     field_obj = getattr(model, field.name)
 
@@ -136,11 +136,15 @@ def render_m2m_dict(form, field_name):
 
 @register.simple_tag
 def render_obj_value(obj, m2m_dict, field):
+
     value = getattr(obj, field)
-    value_type = value.__repr__()
-    if 'ManyRelated' in value_type:
+
+    if hasattr(value, 'pk'):
+        value = value.pk
+    elif 'ManyRelated' in value.__repr__():
         _dict = m2m_dict[field]
         value = _dict[obj.id] if obj.id in _dict else ''
+
     return value
 
 

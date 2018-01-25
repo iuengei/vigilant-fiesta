@@ -3,23 +3,69 @@ from course import models
 from django.utils.timezone import timedelta
 from django.utils.translation import ugettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
+from utils.mixins.form import FormChainMixin, FormFieldQuerysetFilterMixin, FormFieldDisabledMixin
+from functools import partialmethod
 
 
-class CourseChainForm(forms.ModelForm):
-    def __init__(self, *args, course_plan, **kwargs):
+class CoursePlanForm(FormFieldQuerysetFilterMixin,
+                     forms.ModelForm):
+    def __init__(self, *args, user=None, **kwargs):
+        super(CoursePlanForm, self).__init__(*args, user=user, **kwargs)
+
+        branch = user.branch
+        branch_disabled = True if branch else False
+        self.branch = forms.IntegerField(widget=forms.Select(choices=models.branch_choices),
+                                         initial=branch, disabled=branch_disabled).get_bound_field(self, 'branch')
+
+    class Meta:
+        model = models.CoursePlan
+        fields = '__all__'
+        exclude = ['create_time', 'status']
+
+    def clean_plan_time(self):
+        plan_time = self.cleaned_data.get('plan_time')
+        if plan_time.minute not in [0, 30]:
+            raise forms.ValidationError('Parameter plan_time should be a point or a half ', code='invalid')
+        return plan_time.replace(second=0, microsecond=0)
+
+
+class CoursePlanDisabledForm(FormFieldDisabledMixin,
+                             forms.ModelForm):
+    class Meta:
+        model = models.CoursePlan
+        fields = '__all__'
+        exclude = ['create_time', 'status']
+
+
+class CourseChainForm(FormChainMixin,
+                      forms.ModelForm):
+    other_forms = {
+        'course_plan': CoursePlanDisabledForm,
+    }
+
+    def __init__(self, *args, **kwargs):
+        course_plan = kwargs.get('course_plan')
         super(CourseChainForm, self).__init__(*args, **kwargs)
 
         self.fields['teacher'].queryset = course_plan.student.teachers
-
-        data = args[0] if args else None
-        self.course_plan = CoursePlanForm(data, instance=course_plan, prefix='course_plan')
 
     class Meta:
         model = models.CoursesRecord
         fields = '__all__'
         exclude = ['student', 'status', 'lesson_timedelta']
 
+    def clean_lesson_time(self):
+        lesson_time = self.cleaned_data.get('lesson_time')
+        if lesson_time.minute not in [0, 30]:
+            self.add_error('lesson_time',
+                           forms.ValidationError('Parameter plan_time should be a point or a half.', code='invalid'))
+        if lesson_time < self.course_plan.plan_time:
+            self.add_error('lesson_time',
+                           forms.ValidationError('Parameter lesson_time is earlier than plan_time.', code='invalid'))
+        return lesson_time.replace(second=0, microsecond=0)
+
     def clean(self):
+
         teacher = self.cleaned_data['teacher']
         lesson_time = self.cleaned_data['lesson_time']
         date_from = lesson_time - timedelta(seconds=3600 * 4)
@@ -40,35 +86,6 @@ class CourseChainForm(forms.ModelForm):
             return self.cleaned_data
         self.cleaned_data['lesson_timedelta'] = float(self.course_plan.instance.hours * 3600 / 86400)
         return self.cleaned_data
-
-
-class CoursePlanForm(forms.ModelForm):
-    def __init__(self, *args, user=None, **kwargs):
-        super(CoursePlanForm, self).__init__(*args, **kwargs)
-
-        if user:
-            students = get_objects_for_user(user, 'main.change_student', accept_global_perms=False)
-            branch = user.branch
-
-            self.base_fields['student'].queryset = students
-
-            branch_disabled = True if branch else False
-            self.branch = forms.IntegerField(widget=forms.Select(choices=models.branch_choices),
-                                             initial=branch, disabled=branch_disabled).get_bound_field(self, 'branch')
-        else:
-            for name, field in self.fields.items():
-                field.disabled = True
-
-    class Meta:
-        model = models.CoursePlan
-        fields = '__all__'
-        exclude = ['create_time', 'status']
-
-    def clean_plan_time(self):
-        plan_time = self.cleaned_data.get('plan_time')
-        if plan_time.minute not in [0, 30]:
-            raise forms.ValidationError('Parameter plan_time should be a point or a half ', code='invalid')
-        return plan_time.replace(second=0, microsecond=0)
 
 
 class LessonPlanForm(forms.ModelForm):

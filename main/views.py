@@ -12,10 +12,12 @@ from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from main import models
+from accounts.models import Group
 from accounts import models as accounts_models
 from main import forms
 from utils.search_queryset import SearchQuerySet
 from guardian.shortcuts import assign_perm, remove_perm
+from utils.mixins.view import PermQuerysetMixin, PermRequiredMixin
 
 
 # Create your views here.
@@ -26,52 +28,45 @@ class Index(View):
         return render(request, self.template_name)
 
 
-class StudentsView(View):
+class StudentsView(PermQuerysetMixin, View):
     template_name = 'main/obj_list_js.html'
+    model = models.Student
     fields = ['name', 'sex', 'grade', 'branch', 'supervisor']
+    permission_required = ['main.change_student', 'main.view_student']
+    get_objects_for_user_extra_kwargs = {'any_perm': True}
 
     def get(self, request):
-        data = {}
-        if request.user.is_staff:
-            branch = request.user.branch
-            students = models.Student.objects.filter(
-                branch=branch).select_related() if branch else models.Student.objects.select_related()
-        else:
-            students = get_objects_for_user(request.user, ['main.change_student', 'main.view_student'],
-                                            accept_global_perms=False, any_perm=True).select_related()
-        data['items'] = students
+        data = self.base_dict()
+
+        data['items'] = self.get_queryset().select_related()
+
         data['title'] = ('学生列表', 'Student List')
-        data['fields'] = self.fields
-        data['model'] = models.Student
         data['detail'] = 'name'
 
         return render(request, self.template_name, data)
 
 
-class StudentView(View):
+class StudentView(PermRequiredMixin, View):
     template_name = 'main/student_details.html'
+    permission_required = 'main.change_student'
+    return_403 = True
+    model = models.Student
+    object_check = True
 
-    @method_decorator(login_required)
     def get(self, request, pk):
-        data = {}
-        try:
-            student = models.Student.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm(['main.change_student', 'main.view_student'], student):
+        data = dict()
 
-            data['details'] = student
-            data['title'] = ('学生详情', 'Student Details')
+        student = self.get_object(pk)
+        data['details'] = student
+        data['title'] = ('学生详情', 'Student Details')
 
-            tags = student.tag_set.order_by('-create_time').select_related('author')
-            teachers = student.teachers.all()
-            data['tags'] = tags
-            data['teachers'] = teachers
-            data['tag_form'] = forms.TagForm(initial={'author': request.user.id, 'to': pk})
+        tags = student.tag_set.order_by('-create_time').select_related('author')
+        teachers = student.teachers.all()
+        data['tags'] = tags
+        data['teachers'] = teachers
+        data['tag_form'] = forms.TagForm(initial={'author': request.user.id, 'to': 1})
 
-            return render(request, self.template_name, data)
-        else:
-            return redirect(reverse('403'))
+        return render(request, self.template_name, data)
 
 
 class TagView(View):
@@ -81,9 +76,12 @@ class TagView(View):
         form = forms.TagForm(request.POST)
         if form.is_valid():
             if form.cleaned_data['to'] == int(to) and form.cleaned_data['author'] == int(author):
-                models.Tag.objects.create(content=form.data.get('content'),
-                                          author_id=form.data.get('author'),
-                                          to_id=form.data.get('to'))
+                obj = models.Tag.objects.create(content=form.data.get('content'),
+                                                author_id=form.data.get('author'),
+                                                to_id=form.data.get('to'))
+
+                assign_perm('main.change_tag', request.user, obj)
+                assign_perm('main.delete_tag', request.user, obj)
         else:
             resp['status'] = 'error'
             resp['error_message'] = '不得超过256个字符'
@@ -92,117 +90,98 @@ class TagView(View):
         return HttpResponse(resp)
 
 
-class StudentChangeView(View):
+class StudentChangeView(PermRequiredMixin, View):
     template_name = 'main/student_edit.html'
+    permission_required = 'main.change_student'
+    return_403 = True
+    model = models.Student
+    object_check = True
 
-    @method_decorator(login_required)
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            student = models.Student.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('main.change_student', student):
-            if not form:
-                form = forms.StudentForm(instance=student, add=False, user=request.user)
+        student = self.get_object(pk)
 
-            data['form'] = form
-            data['parents_formset'] = form.parents
-            data['edit_detail'] = True
-            data['pk'] = pk
+        if not form:
+            form = forms.StudentForm(instance=student, user=request.user)
 
-            return render(request, self.template_name, data)
-        else:
-            return redirect(reverse('403'))
+        data['form'] = form
+        data['parents_formset'] = form.parents
+        data['edit_detail'] = True
+        data['pk'] = pk
 
-    @method_decorator(login_required)
+        return render(request, self.template_name, data)
+
     def post(self, request, pk):
-        try:
-            student = models.Student.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('main.change_student', student):
-            form = forms.StudentForm(request.POST, instance=student, add=False, user=request.user)
-            parents_formset = form.parents
-            if form.is_valid() and parents_formset.is_valid():
-                student = form.save(commit=False)
-                student.save()
-                form.save_m2m()
+        student = self.get_object(pk)
 
-                parents_formset.save()
+        form = forms.StudentForm(request.POST, instance=student, user=request.user)
+        parents_formset = form.parents
+        if form.is_valid() and parents_formset.is_valid():
+            student = form.save(commit=False)
+            student.save()
+            form.save_m2m()
 
-                url = reverse('main:student_edit', args=(pk,))
-                msg = 'Succeed to update student details'
-                messages.add_message(request, messages.SUCCESS, msg)
-                return redirect(url)
-            return self.get(request, pk, form=form)
-        else:
-            return redirect(reverse('403'))
+            parents_formset.save()
+
+            url = reverse('main:student_edit', args=(pk,))
+            msg = 'Succeed to update student details'
+            messages.add_message(request, messages.SUCCESS, msg)
+            return redirect(url)
+        return self.get(request, pk, form=form)
 
 
-class StudentTeacherView(View):
+class StudentTeacherView(PermRequiredMixin, View):
     template_name = 'main/student_edit.html'
+    permission_required = 'main.change_student'
+    return_403 = True
+    model = models.Student
+    object_check = True
 
-    @method_decorator(login_required)
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            student = models.Student.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('main.change_student', student):
-            if not form:
-                form = forms.StudentTeacherForm(instance=student)
 
-            data['m2m_field'] = {
-                'name': 'teachers',
-                'form': form,
-                'filter_args': form.filter_fields,
-                'filter_form': (getattr(form, field) for field in form.filter_fields)
-            }
+        student = self.get_object(pk)
 
-            data['edit_teacher'] = True
-            data['pk'] = pk
+        if not form:
+            form = forms.StudentTeacherForm(instance=student, user=request.user)
 
-            return render(request, self.template_name, data)
-        else:
-            return redirect(reverse('403'))
+        data['m2m_field'] = form.get_m2m_data()
 
-    @method_decorator(login_required)
+        data['edit_teacher'] = True
+        data['pk'] = pk
+
+        return render(request, self.template_name, data)
+
     def post(self, request, pk):
-        try:
-            student = models.Student.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('main.change_student', student):
-            form = forms.StudentTeacherForm(request.POST, instance=student)
-            if form.is_valid():
-                student = form.save(commit=False)
+        student = self.get_object(pk)
 
-                if form.has_changed():
-                    elapsed = get_users_with_perms(student).filter(duty=2)
-                    current = models.User.objects.filter(teacher_info__in=form.cleaned_data.get('teachers'))
+        form = forms.StudentTeacherForm(request.POST, instance=student, user=request.user)
+        if form.is_valid():
+            student = form.save(commit=False)
 
-                    add = current.difference(elapsed)
-                    rem = elapsed.difference(current)
-                    _ = [remove_perm('view_student', _, student) for _ in rem] if rem else None
-                    _ = [assign_perm('view_student', _, student) for _ in add] if add else None
+            if form.has_changed():
+                elapsed = get_users_with_perms(student).filter(duty=2)
+                current = models.User.objects.filter(teacher_info__in=form.cleaned_data.get('teachers'))
 
-                student.save()
-                form.save_m2m()
-                url = reverse('main:student_teacher_edit', args=(pk,))
-                msg = 'Succeed to update student details'
-                messages.add_message(request, messages.SUCCESS, msg)
-                return redirect(url)
-            return self.get(request, pk, form=form)
-        else:
-            return redirect(reverse('403'))
+                add = current.difference(elapsed)
+                rem = elapsed.difference(current)
+                _ = [remove_perm('view_student', _, student) for _ in rem] if rem else None
+                _ = [assign_perm('view_student', _, student) for _ in add] if add else None
+
+            student.save()
+            form.save_m2m()
+            url = reverse('main:student_teacher_edit', args=(pk,))
+            msg = 'Succeed to update student details'
+            messages.add_message(request, messages.SUCCESS, msg)
+            return redirect(url)
+        return self.get(request, pk, form=form)
 
 
-class StudentAddView(View):
+class StudentAddView(PermRequiredMixin, View):
     template_name = 'base_add.html'
+    permission_required = 'main.add_student'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('main.add_student', accept_global_perms=True))
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -213,14 +192,20 @@ class StudentAddView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.add_student', accept_global_perms=True))
     def post(self, request):
         form = forms.StudentForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
-            teacher = form.save(commit=False)
-            teacher.save()
+            student = form.save(commit=False)
+            student.save()
             form.save_m2m()
+
+            assign_perm('main.change_student', student.supervisor.user_info, student)
+            assign_perm('main.view_student', student.supervisor.user_info, student)
+
+            user_group = Group.objects.get(name='User_'+str(student.branch))
+            assign_perm('main.change_student', user_group, student)
+            assign_perm('main.view_student', user_group, student)
 
             msg = 'Succeed to add student'
             url = reverse('main:student_add')
@@ -230,10 +215,11 @@ class StudentAddView(View):
         return self.get(request, form)
 
 
-class TeacherAddView(View):
+class TeacherAddView(PermRequiredMixin, View):
     template_name = 'base_add.html'
+    permission_required = 'main.add_teacher'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('main.add_teacher', accept_global_perms=True))
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -242,16 +228,10 @@ class TeacherAddView(View):
         data['form'] = form
         data['add_teacher'] = True
 
-        data['m2m_field'] = {
-            'name': 'grades',
-            'form': form,
-            'filter_args': form.filter_fields,
-            'filter_form': (getattr(form, field) for field in form.filter_fields)
-        }
+        data['m2m_field'] = form.get_m2m_data()
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.add_teacher', accept_global_perms=True))
     def post(self, request):
         form = forms.TeacherForm(request.POST)
         if form.is_valid():
@@ -268,10 +248,11 @@ class TeacherAddView(View):
         return self.get(request, form)
 
 
-class SupervisorAddView(View):
+class SupervisorAddView(PermRequiredMixin, View):
     template_name = 'base_add.html'
+    permission_required = 'main.add_supervisor'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -282,7 +263,6 @@ class SupervisorAddView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def post(self, request):
         form = forms.SupervisorForm(request.POST)
         if form.is_valid():
@@ -298,72 +278,111 @@ class SupervisorAddView(View):
         return self.get(request, form)
 
 
-class TeacherChangeView(View):
+class TeacherChangeView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
-    form = forms.TeacherChangeForm
+    permission_required = 'main.change_teacher'
+    model = models.Teacher
+    object_check = True
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('main.change_teacher', accept_global_perms=True))
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            teacher = models.Teacher.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
 
-        if request.user.perm_obj.has_perm('change_teacher', teacher):
-            if not form:
-                form = self.form(instance=teacher)
+        teacher = self.get_object(pk)
 
-            data['form'] = form
+        if not form:
+            form = forms.TeacherChangeForm(instance=teacher)
 
-            return render(request, self.template_name, data)
-        else:
-            return HttpResponseForbidden(content='你没有权限')
-
-    @method_decorator(permission_required_or_403('main.change_teacher', accept_global_perms=True))
-    def post(self, request, pk):
-        try:
-            teacher = models.Teacher.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        print(request.POST.getlist('grades'))
-        if request.user.perm_obj.has_perm('main.change_teacher', teacher):
-
-            form = self.form(request.POST, instance=teacher)
-            if form.is_valid():
-                teacher = form.save(commit=False)
-                update_fields = form.changed_data
-
-                if 'grades' in update_fields:
-                    update_fields.remove('grades')
-
-                teacher.save(update_fields=update_fields)
-                form.save_m2m()
-
-                url = reverse('main:teachers')
-                msg = 'Succeed to update teacher details'
-                messages.add_message(request, messages.SUCCESS, msg)
-                return redirect(url)
-            print(form.errors)
-            return self.get(request, pk, form=form)
-        else:
-            return HttpResponseForbidden(content='你没有权限')
-
-
-class TeachersView(View):
-    template_name = 'main/obj_list_js.html'
-    fields = ['name', 'sex', 'age', 'subject', 'branch', 'work_type', 'mobile']
-
-    @method_decorator(permission_required_or_403('main.add_teacher', accept_global_perms=True))
-    def get(self, request):
-        data = {}
-
-        branch = request.user.branch
-        items = models.Teacher.objects.filter(branch=branch) if branch else models.Teacher.objects.all()
-
-        data['items'] = items
-        data['title'] = ('教师列表', 'Teacher List')
-        data['fields'] = self.fields
-        data['model'] = models.Teacher
+        data['form'] = form
+        data['m2m_field'] = form.get_m2m_data()
 
         return render(request, self.template_name, data)
+
+    def post(self, request, pk):
+        teacher = self.get_object(pk)
+
+        form = forms.TeacherChangeForm(request.POST, instance=teacher)
+        if form.is_valid():
+            teacher = form.save(commit=False)
+            update_fields = form.changed_data
+
+            if 'grades' in update_fields:
+                update_fields.remove('grades')
+
+            teacher.save(update_fields=update_fields)
+            form.save_m2m()
+
+            url = reverse('main:teachers')
+            msg = 'Succeed to update teacher details'
+            messages.add_message(request, messages.SUCCESS, msg)
+            return redirect(url)
+        print(form.errors)
+        return self.get(request, pk, form=form)
+
+
+class TeachersView(PermQuerysetMixin, View):
+    template_name = 'main/obj_list_js.html'
+    fields = ['name', 'sex', 'age', 'subject', 'branch', 'work_type', 'mobile']
+    permission_required = 'main.view_teacher'
+    model = models.Teacher
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': True,
+    }
+
+    def get(self, request):
+        data = self.base_dict()
+        data['items'] = self.get_queryset()
+        data['title'] = ('教师列表', 'Teacher List')
+        return render(request, self.template_name, data)
+
+
+class InterviewsView(PermQuerysetMixin, View):
+    template_name = 'main/interviews.html'
+    fields = ['name', 'sex', 'age', 'subject', 'address', 'mobile', 'level', 'result', 'author', 'create_time']
+    permission_required = 'main.view_interview'
+    model = models.Interview
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': True,
+    }
+
+    def get(self, request):
+        data = self.base_dict()
+        data['items'] = self.get_queryset()
+        data['title'] = ('教师招聘', 'Teacher Interviews')
+
+        return render(request, self.template_name, data)
+
+
+class InterviewAddView(PermRequiredMixin, View):
+    template_name = 'form_edit.html'
+    permission_required = 'main.add_interview'
+    accept_global_perms = True
+
+    def get(self, request, form=None):
+        data = {}
+        if not form:
+            form = forms.InterviewForm()
+
+        data['form'] = form
+
+        return render(request, self.template_name, data)
+
+    def post(self, request):
+        form = forms.InterviewForm(request.POST)
+        if form.is_valid():
+            form.save()
+            interview = form.save(commit=False)
+            interview.author = request.user
+            interview.save()
+            form.save_m2m()
+
+            user_group = Group.objects.get(name='User_' + str(interview.branch))
+            assign_perm('main.change_interview', user_group, interview)
+            assign_perm('main.view_interview', user_group, interview)
+
+            msg = 'Succeed to add interview'
+            url = reverse('main:interviews')
+            messages.add_message(request, messages.SUCCESS, msg)
+            return redirect(url)
+
+        return self.get(request, form)

@@ -1,0 +1,57 @@
+{% extends 'index.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block style %}
+    <style>
+        .content_wrapper {
+            padding-left: 15%;
+            padding-right: 15%;
+            padding-top: 25px;
+
+        }
+    </style>
+{% endblock %}
+{% block content %}
+    {% load bootstrap3 %}
+
+    <div class="content_wrapper row">
+        <ul class="nav nav-tabs">
+            {% if perms.accounts.add_teacher %}
+                <li role="presentation" {% if is_achievement %} class="active" {% endif %}><a
+                        href="{% url 'achievement:achievement_add' %}">Add Achievement</a></li>
+                <li role="presentation" {% if is_test %} class="active" {% endif %}><a
+                        href="{% url 'achievement:test_add' %}">Add Test</a></li>
+                <li role="presentation" {% if is_paper %} class="active" {% endif %}><a
+                        href="{% url 'achievement:paper_add' %}">Add Exam Paper</a></li>
+            {% endif %}
+        </ul>
+        <br>
+        <div class="form-horizontal">
+            <form method="post"{% if is_paper %} enctype="multipart/form-data"{% endif %}>
+                {% csrf_token %}
+                {% if m2m_field %}
+                {% for foo in form %}
+                {% if foo.name != m2m_field.name %}
+                    {% bootstrap_field foo layout='horizontal' %}
+                {% endif %}
+                {% endfor %}
+                {% include 'm2m_field.html' %}
+                {% else %}
+                {% bootstrap_form form layout='horizontal' %}
+                {% endif %}
+                <button type="submit" class="btn btn-primary pull-right">submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+{% if m2m_field %}
+<script src="/static/m2m_field.js"></script>
+<script>
+    $(function () {
+        initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+    });
+</script>
+{% endif %}
+{% endblock %}

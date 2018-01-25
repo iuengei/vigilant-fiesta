@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 
 import os
 
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     'main.apps.MainConfig',
     'accounts.apps.AccountsConfig',
     'course.apps.CourseConfig',
+    'achievement.apps.AchievementConfig',
     'guardian',
     'bootstrap3',
     'debug_toolbar',
@@ -147,7 +149,4 @@ AUTH_USER_MODEL = 'accounts.User'
 GUARDIAN_RENDER_403 = True
 GUARDIAN_TEMPLATE_403 = '403.html'
 
-BOOTSTRAP3 = {
-    'set_required': True,
-    'set_disabled': False,
-}
+LOGIN_URL = '/accounts/login'

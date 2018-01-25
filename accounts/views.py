@@ -23,6 +23,7 @@ from accounts import forms
 from main.forms import TeacherChangeForm, SupervisorForm
 import main.models as main_models
 from utils.search_queryset import SearchQuerySet
+from utils.mixins.view import PermRequiredMixin, LoginRequiredMixin
 
 
 # Create your views here.
@@ -114,10 +115,11 @@ def user_logout(request):
     return redirect(url)
 
 
-class RegisterView(View):
+class RegisterView(PermRequiredMixin, View):
     template_name = 'base_add.html'
+    permission_required = 'accounts.add_user'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -128,23 +130,20 @@ class RegisterView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def post(self, request):
         form = forms.RegisterForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data['username']
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            duty = form.cleaned_data['duty']
-            branch = form.cleaned_data['branch']
 
-            user = User.objects.create_user(email, username, password)
+            duty = form.cleaned_data.pop('duty')
+            branch = form.cleaned_data.pop('branch')
+
+            user = User.objects.create_user(**form.cleaned_data)
             user.duty = duty
             user.branch = branch
             user.save()
 
             user.groups.add(Group.objects.get(name='User'))
-            assign_perm('change_user', user, user)
+            user.groups.add(Group.objects.get(name='User_' + str(user.branch)))
 
             msg = 'Successfully Registered'
             messages.add_message(request, messages.SUCCESS, msg)
@@ -154,10 +153,11 @@ class RegisterView(View):
             return self.get(request, form)
 
 
-class UsersView(View):
+class UsersView(PermRequiredMixin, View):
     template_name = 'accounts/users.html'
+    permission_required = 'accounts.view_user'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('accounts.change_user', accept_global_perms=True))
     def get(self, request, group_id=0):
         data = {}
         if group_id:
@@ -191,16 +191,18 @@ class UsersView(View):
         return render(request, self.template_name, data)
 
 
-class UserView(View):
+class UserView(PermRequiredMixin, View):
     template_name = 'accounts/user.html'
+    permission_required = 'accounts.view_user'
+    model = User
+    accept_global_perms = True
+    object_check = True
 
-    @method_decorator(permission_required_or_403('accounts.change_user', accept_global_perms=True))
     def get(self, request, pk):
         data = {}
-        try:
-            user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
-            raise Http404
+
+        user = self.get_object(pk)
+
         data['user'] = user
 
         groups = user.groups.all()
@@ -212,29 +214,28 @@ class UserView(View):
         return render(request, self.template_name, data)
 
 
-class UserChangeView(View):
+class UserChangeView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
+    permission_required = 'accounts.change_user'
+    model = User
+    accept_global_perms = True
+    object_check = True
 
-    @method_decorator(permission_required_or_403('main.change_user', accept_global_perms=True))
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
-            raise Http404
+        user = self.get_object(pk)
 
         if not form:
             form = forms.UserForm(instance=user)
         data['form'] = form
 
+        data['m2m_field'] = form.get_m2m_data()
+
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.change_user', accept_global_perms=True))
     def post(self, request, pk):
-        try:
-            user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
-            raise Http404
+        user = self.get_object(pk)
+
         form = forms.UserForm(request.POST, instance=user)
         if form.is_valid() and request.user.is_superuser:
             user = form.save(commit=False)
@@ -249,17 +250,19 @@ class UserChangeView(View):
         return self.get(request, pk, form=form)
 
 
-class GroupView(View):
+class GroupView(PermRequiredMixin, View):
     template_name = 'accounts/group.html'
+    permission_required = 'auth.add_group'
+    accept_global_perms = True
+    object_check = True
+    model = Group
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def get(self, request, pk):
-        pk = int(pk)
+
         data = {}
-        try:
-            group = Group.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+
+        group = self.get_object(pk)
+
         data['group'] = group
 
         permissions = group.permissions.all()
@@ -271,42 +274,34 @@ class GroupView(View):
         return render(request, self.template_name, data)
 
 
-class GroupChangeView(View):
+class GroupChangeView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
+    permission_required = 'auth.change_group'
+    accept_global_perms = True
+    object_check = True
+    model = Group
 
-    @method_decorator(permission_required_or_403('accounts.change_user', accept_global_perms=True))
-    def get(self, request, pk):
-        pk = int(pk)
+    def get(self, request, pk, form=None):
         data = {}
-        try:
-            group = Group.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+        group = self.get_object(pk)
 
-        form = forms.GroupForm(instance=group)
+        if not form:
+            form = forms.GroupForm(instance=group)
         data['form'] = form
 
-        data['m2m_field'] = {
-            'name': 'permissions',
-            'form': form,
-            'filter_args': form.filter_fields,
-            'filter_form': (getattr(form, field) for field in form.filter_fields)
-        }
+        data['m2m_field'] = form.get_m2m_data()
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('accounts.change_user', accept_global_perms=True))
     def post(self, request, pk):
         pk = int(pk)
-        try:
-            group = Group.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+        group = self.get_object(pk)
+
         form = forms.GroupForm(request.POST, instance=group)
         if form.is_valid():
             form.save()
             url = reverse('accounts:groups')
-            msg = 'Succeed to update group(%s)' % group.__str__()
+            msg = 'Succeed to update group(%s)' % group
 
             messages.add_message(request, messages.SUCCESS, msg)
 
@@ -315,24 +310,20 @@ class GroupChangeView(View):
             return self.get(request, form=form, pk=pk)
 
 
-class GroupAddView(View):
+class GroupAddView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
+    permission_required = 'auth.add_group'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
-    def get(self, request):
+    def get(self, request, form=None):
         data = {}
-        form = forms.GroupForm()
+        if not form:
+            form = forms.GroupForm()
         data['form'] = form
 
-        data['m2m_field'] = {
-            'name': 'permissions',
-            'form': form,
-            'filter_args': form.filter_fields,
-            'filter_form': (getattr(form, field) for field in form.filter_fields)
-        }
+        data['m2m_field'] = form.get_m2m_data()
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def post(self, request):
 
         form = forms.GroupForm(request.POST)
@@ -348,10 +339,11 @@ class GroupAddView(View):
             return self.get(request, form=form)
 
 
-class GroupsView(View):
+class GroupsView(PermRequiredMixin, View):
     template_name = 'accounts/groups.html'
+    permission_required = 'accounts.add_group'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('accounts.add_user', accept_global_perms=True))
     def get(self, request):
         data = {}
         groups = Group.objects.all()
@@ -362,7 +354,7 @@ class GroupsView(View):
         return render(request, self.template_name, data)
 
 
-class ProfileView(View):
+class ProfileView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
     @method_decorator(login_required)
@@ -390,7 +382,7 @@ class ProfileView(View):
         return self.get(request, form)
 
 
-class ChangePasswordView(View):
+class ChangePasswordView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
     @method_decorator(login_required)
@@ -422,7 +414,7 @@ class ChangePasswordView(View):
         return self.get(request, form)
 
 
-class TeacherInfoView(View):
+class TeacherInfoView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
     @method_decorator(login_required)
@@ -450,7 +442,7 @@ class TeacherInfoView(View):
         return self.get(request, form)
 
 
-class SupervisorInfoView(View):
+class SupervisorInfoView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
     @method_decorator(login_required)

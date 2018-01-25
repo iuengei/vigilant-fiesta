@@ -21,4 +21,8 @@ urlpatterns = [
 
     url(r'tags/add/(?P<to>(-)?[0-9]+)/(?P<author>(-)?[0-9]+)/$', views.TagView.as_view(), name='tag_add'),
 
+    url(r'^interviews/$', views.InterviewsView.as_view(), name='interviews'),
+
+    url(r'interviews/add/$', views.InterviewAddView.as_view(), name='interview_add'),
+
 ]

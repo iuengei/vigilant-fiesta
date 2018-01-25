@@ -27,6 +27,7 @@ urlpatterns = [
 
     url(r'^', include('main.urls', namespace='main')),
     url(r'^courses/', include('course.urls', namespace='course')),
+    url(r'^achievements/', include('achievement.urls', namespace='achievement')),
     url(r'^accounts/', include('accounts.urls', namespace='accounts')),
 
     url(r'^(?P<app_label>(\w)+)/(?P<model_name>(\w)+)/(?P<pk>(-)?[0-9]+)/delete/$', DeleteView.as_view(),

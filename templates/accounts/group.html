@@ -24,8 +24,6 @@
                 </h4>
             </div>
             <div class="row">
-                <p><label>Name</label>: {{ group.name }}</p>
-                <hr>
                 <table class="table table-striped">
                     <thead>
                     <tr>
@@ -63,7 +61,8 @@
         </div>
         <div class="col-md-3 col-md-offset-1">
             <div class="page-header">
-                <h4>Permissions</h4>
+                <h5>Group Name: {{ group.name }} &nbsp;
+                    <small>Permissions List</small></h5>
             </div>
             <ul class="list-group">
                 {% for permission in permissions %}

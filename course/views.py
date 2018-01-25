@@ -12,21 +12,29 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from course import models
 from course import forms
 from utils.search_queryset import SearchQuerySet
+from utils.mixins.view import PermQuerysetMixin, PermRequiredMixin
+from guardian.shortcuts import assign_perm, remove_perm
+from accounts.models import Group
 
 
 # Create your views here.
 
 
-class CoursesView(View):
+class CoursesView(PermQuerysetMixin, View):
     template_name = 'course/courses.html'
     fields = ['student', 'teacher', 'lesson_time', 'lesson_plan', 'attendance', 'status']
+    model = models.CoursesRecord
+    permission_required = 'course.view_coursesrecord'
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': False,
+    }
 
     def get(self, request):
-        data = {}
+
         students = get_objects_for_user(request.user, 'main.view_student', accept_global_perms=True)
         plan_count = models.CoursePlan.objects.filter(student__in=students).filter(status=False).count()
 
-        items = models.CoursesRecord.objects.filter(student__student__in=students).select_related()
+        items = self.get_queryset().select_related()
 
         search_content = request.GET.get('s', '')
         if search_content:
@@ -45,13 +53,12 @@ class CoursesView(View):
         except EmptyPage:
             items = paginator.page(paginator.num_pages)
 
+        data = self.base_dict()
         data['items'] = items
         data['is_courses'] = True
         data['plan_count'] = plan_count
         data['per_number'] = (items.number-1)*items.paginator.per_page
         data['title'] = ('排课记录', 'Courses Record')
-        data['fields'] = self.fields
-        data['model'] = models.CoursesRecord
 
         return render(request, self.template_name, data)
 
@@ -77,18 +84,23 @@ def get_plan_ajax(request):
     return HttpResponse(json.dumps(data))
 
 
-class CoursePlanView(View):
+class CoursePlanView(PermQuerysetMixin, View):
     template_name = 'course/course_plan.html'
     fields = ['student', 'grade', 'subject', 'plan_time', 'hours', 'status']
+    model = models.CoursePlan
+    permission_required = 'course.view_courseplan'
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': False,
+    }
 
     def get(self, request, form=None):
-        data = {}
-        students = get_objects_for_user(request.user, 'main.change_student', accept_global_perms=False)
+        data = self.base_dict()
         if not form:
             form = forms.CoursePlanForm(user=request.user)
         data['form'] = form
         data['branch'] = form.branch
-        items = models.CoursePlan.objects.filter(student__in=students).select_related()
+
+        items = self.get_queryset().select_related()
         plan_count = items.filter(status=False).count()
 
         search_content = request.GET.get('s', '')
@@ -112,17 +124,20 @@ class CoursePlanView(View):
         data['plan_count'] = plan_count
         data['per_number'] = (items.number-1)*items.paginator.per_page
         data['title'] = ('计划排课', 'Course Plan')
-        data['fields'] = self.fields
         data['is_courseplan'] = True
-        data['model'] = models.CoursePlan
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('course.add_courseplan', accept_global_perms=True))
     def post(self, request):
         form = forms.CoursePlanForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
+            plan = form.save(commit=False)
+            plan.save()
+            form.save_m2m()
+
+            request.user.add_obj_perm('course.view_courseplan', plan)
+            request.user.add_obj_perm('course.delete_courseplan', plan)
+            assign_perm('change_courseplan', Group.objects.get(name='User_' + str(request.user.branch)), plan)
 
             url = reverse('course:plan')
             msg = 'Successfully add a new course plan.'
@@ -150,16 +165,16 @@ class CoursePlanDeleteView(View):
             return redirect(reverse('403'))
 
 
-class CourseChainView(View):
+class CourseChainView(PermRequiredMixin, View):
     template_name = 'course/course_chain.html'
+    permission_required = 'course.change_courseplan'
+    accept_global_perms = True
+    object_check = True
+    model = models.CoursePlan
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            course_plan = models.CoursePlan.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+        course_plan = self.get_object(pk)
         if course_plan.status:
             raise Http404
 
@@ -172,12 +187,8 @@ class CourseChainView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def post(self, request, pk):
-        try:
-            course_plan = models.CoursePlan.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+        course_plan = self.get_object(pk)
         if course_plan.status:
             raise Http404
 
@@ -188,9 +199,15 @@ class CourseChainView(View):
             plan = plan_form.save(commit=False)
             if obj.teacher.branch == plan.student.branch:
                 obj.student = course_plan
-                # obj.plan_timedelta
                 obj.save()
                 form.save_m2m()
+
+                assign_perm('course.view_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
+                assign_perm('course.change_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
+                assign_perm('course.delete_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
+
+                assign_perm('course.view_coursesrecord', obj.teacher.user_info, obj)
+                assign_perm('course.view_coursesrecord', plan.student.supervisor.user_info, obj)
 
                 plan.status = True
                 plan.save()
@@ -207,20 +224,19 @@ class CourseChainView(View):
         return self.get(request, pk=pk, form=form)
 
 
-class CourseChangeView(View):
+class CourseChangeView(PermRequiredMixin, View):
     template_name = 'course/course_chain.html'
+    permission_required = 'course.change_coursesrecord'
+    accept_global_perms = True
+    object_check = True
+    model = models.CoursesRecord
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            course = models.CoursesRecord.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+
+        course = self.get_object(pk)
 
         course_plan = course.student
-
-        teachers = course_plan.student.teachers
 
         if not form:
             form = forms.CourseChainForm(course_plan=course_plan, instance=course)
@@ -232,28 +248,24 @@ class CourseChangeView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('main.add_supervisor', accept_global_perms=True))
     def post(self, request, pk):
-        try:
-            course = models.CoursesRecord.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-
+        course = self.get_object(pk)
         course_plan = course.student
-        teachers = course_plan.student.teachers
 
         form = forms.CourseChainForm(request.POST, course_plan=course_plan, instance=course)
-        plan_form = form.course_plan
-        if form.is_valid() and not plan_form.has_changed():
-            obj = form.save(commit=False)
-            plan = plan_form.save(commit=False)
-            if obj.teacher.branch == plan.student.branch:
-                obj.student = course_plan
-                obj.save()
-                form.save_m2m()
 
-                plan.status = True
-                plan.save()
+        if form.is_valid():
+            obj = form.save(commit=False)
+            if obj.teacher.branch == course_plan.student.branch:
+
+                if form.has_changed() and 'teacher' in form.changed_data:
+                    elapsed = course.teacher.user_info
+                    current = form.cleaned_data.get('teacher').user_info
+
+                    remove_perm('course.view_coursesrecord', elapsed, obj)
+                    assign_perm('course.view_coursesrecord', current, obj)
+
+                obj.save()
                 form.save_m2m()
 
                 url = reverse('course:list')
@@ -267,25 +279,29 @@ class CourseChangeView(View):
         return self.get(request, pk=pk, form=form)
 
 
-class LessonPlanView(View):
+class LessonPlanView(PermQuerysetMixin, View):
     template_name = 'main/obj_list_js.html'
     fields = ['title', 'file', 'author']
+    permission_required = 'course.view_lessonplan'
+    model = models.LessonPlan
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': True,
+    }
 
     def get(self, request):
-        data = {}
-        items = get_objects_for_user(request.user, 'course.change_lessonplan', accept_global_perms=True)
+        data = self.base_dict()
+        items = self.get_queryset()
         data['items'] = items
         data['title'] = ('教案列表', 'Lesson Plan List')
-        data['fields'] = self.fields
-        data['model'] = models.LessonPlan
 
         return render(request, self.template_name, data)
 
 
-class LessonPlanAddView(View):
+class LessonPlanAddView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
+    permission_required = 'course.add_lessonplan'
+    accept_global_perms = True
 
-    @method_decorator(permission_required_or_403('course.add_lessonplan', accept_global_perms=True))
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -296,14 +312,17 @@ class LessonPlanAddView(View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(permission_required_or_403('course.add_lessonplan', accept_global_perms=True))
     def post(self, request):
         form = forms.LessonPlanForm(request.POST)
-        print(request.POST)
         if form.is_valid():
             obj = form.save(commit=False)
             obj.author = request.user
             obj.save()
+
+            for u in [request.user, Group.objects.get(name='User_'+str(request.user.branch))]:
+                assign_perm('course.view_lessonplan', u, obj)
+                assign_perm('course.change_lessonplan', u, obj)
+                assign_perm('course.delete_lessonplan', u, obj)
 
             url = reverse('course:lessonplans')
             msg = 'Successfully add a lesson plan.'
@@ -315,49 +334,39 @@ class LessonPlanAddView(View):
             return self.get(request, form=form)
 
 
-class LessonPlanChangeView(View):
+class LessonPlanChangeView(PermRequiredMixin, View):
     template_name = 'form_edit.html'
+    permission_required = 'course.change_lessonplan'
+    object_check = True
+    model = models.LessonPlan
 
-    @method_decorator(permission_required_or_403('course.add_lessonplan', accept_global_perms=True))
     def get(self, request, pk, form=None):
         data = {}
-        try:
-            lesson_plan = models.LessonPlan.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('course.change_lessonplan', lesson_plan):
-            if not form:
-                form = forms.LessonPlanForm(instance=lesson_plan)
+        lesson_plan = self.get_object(pk)
 
-            data['title'] = '教案修改'
-            data['form'] = form
+        if not form:
+            form = forms.LessonPlanForm(instance=lesson_plan)
 
-            return render(request, self.template_name, data)
-        else:
-            return redirect(reverse('403'))
+        data['title'] = '教案修改'
+        data['form'] = form
 
-    @method_decorator(permission_required_or_403('course.add_lessonplan', accept_global_perms=True))
+        return render(request, self.template_name, data)
+
     def post(self, request, pk):
-        try:
-            lesson_plan = models.LessonPlan.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
-        if request.user.perm_obj.has_perm('course.change_lessonplan', lesson_plan):
-            form = forms.LessonPlanForm(request.POST, instance=lesson_plan)
+        lesson_plan = self.get_object(pk)
 
-            if form.is_valid():
-                form.save()
+        form = forms.LessonPlanForm(request.POST, instance=lesson_plan)
+        if form.is_valid():
+            form.save()
 
-                url = reverse('course:lessonplans')
-                msg = 'Successfully edit a lesson plan.'
-                messages.add_message(request, messages.SUCCESS, msg)
+            url = reverse('course:lessonplans')
+            msg = 'Successfully edit a lesson plan.'
+            messages.add_message(request, messages.SUCCESS, msg)
 
-                return redirect(url)
-            else:
-                print(form.errors)
-                return self.get(request, form=form)
+            return redirect(url)
         else:
-            return redirect(reverse('403'))
+            print(form.errors)
+            return self.get(request, form=form)
 
 
 def test1(request):

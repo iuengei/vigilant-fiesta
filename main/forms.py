@@ -7,6 +7,7 @@ from django.forms.utils import to_current_timezone
 from django.forms.models import inlineformset_factory
 from django.utils.translation import ugettext_lazy as _
 from guardian.shortcuts import get_objects_for_user
+from utils.mixins.form import FormM2MFieldMixin, FormFieldDisabledMixin, FormFieldQuerysetFilterMixin, FormChainMixin
 
 
 class TagForm(forms.Form):
@@ -15,7 +16,23 @@ class TagForm(forms.Form):
     author = forms.IntegerField(widget=forms.HiddenInput)
 
 
-class StudentForm(forms.ModelForm):
+class StudentForm(FormFieldQuerysetFilterMixin,
+                  FormFieldDisabledMixin,
+                  FormChainMixin,
+                  forms.ModelForm):
+    disabled_fields = ['id_card', 'name', 'branch', 'sex']
+    other_forms = {
+        'parents': inlineformset_factory(models.Student, models.Parent, fields='__all__', extra=0),
+    }
+
+    class Meta:
+        model = models.Student
+        fields = '__all__'
+        exclude = ['img', 'teachers']
+
+
+class StudentAddForm(FormFieldQuerysetFilterMixin,
+                     forms.ModelForm):
     branch = forms.IntegerField(widget=forms.Select)
 
     def __init__(self, *args, user, add=True, **kwargs):
@@ -45,23 +62,12 @@ class StudentForm(forms.ModelForm):
         exclude = ['img', 'teachers']
 
 
-class StudentTeacherForm(forms.ModelForm):
-    filter_fields = ['grades', 'subject']
-
-    def __init__(self, *args, **kwargs):
-        super(StudentTeacherForm, self).__init__(*args, **kwargs)
-        instance = kwargs.get('instance', None)
-        branch = instance.branch
-        grade = instance.grade
-        self.fields['teachers'] = forms.ModelMultipleChoiceField(
-            queryset=models.Teacher.objects.filter(
-                branch=branch) if branch else models.Teacher.objects.all(), required=False)
-
-        self.grades = forms.IntegerField(initial=grade,
-                                         widget=forms.Select(choices=models.grade_choices)).get_bound_field(self,
-                                                                                                            'grades')
-        self.subject = forms.IntegerField(
-            widget=forms.Select(choices=models.Teacher.subject_choices)).get_bound_field(self, 'subject')
+class StudentTeacherForm(FormFieldQuerysetFilterMixin,
+                         FormM2MFieldMixin,
+                         forms.ModelForm):
+    m2m_filed = 'teachers'
+    m2m_filter_args = ['grades', 'subject']
+    m2m_filter_initial = {'grades': 'grade'}
 
     class Meta:
         model = models.Student
@@ -99,20 +105,20 @@ class MyDateTimeWidget(widgets.MultiWidget):
         return [None, None]
 
 
-class TeacherForm(forms.ModelForm):
-    filter_fields = []
+class TeacherForm(FormM2MFieldMixin,
+                  forms.ModelForm):
+    m2m_filed = 'grades'
 
     class Meta:
         model = models.Teacher
         fields = '__all__'
 
 
-class TeacherChangeForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super(TeacherChangeForm, self).__init__(*args, **kwargs)
-        # for field in self.fields:
-        #     if field != 'mobile':
-        #         self.fields[field].disabled = True
+class TeacherChangeForm(FormFieldDisabledMixin,
+                        FormM2MFieldMixin,
+                        forms.ModelForm):
+    m2m_filed = 'grades'
+    disabled_exclude = ['mobile', 'grades']
 
     class Meta:
         model = models.Teacher
@@ -134,3 +140,10 @@ class SupervisorForm(forms.ModelForm):
     class Meta:
         model = models.Supervisor
         fields = '__all__'
+
+
+class InterviewForm(forms.ModelForm):
+    class Meta:
+        model = models.Interview
+        fields = '__all__'
+        exclude = ['author']

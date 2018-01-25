@@ -5,6 +5,7 @@ from django import forms
 from accounts.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate
+from utils.mixins.form import FormFieldDisabledMixin, FormM2MFieldMixin
 
 
 class LoginForm(forms.Form):
@@ -13,12 +14,12 @@ class LoginForm(forms.Form):
 
 
 class RegisterForm(forms.Form):
-    email = forms.EmailField(max_length=256)
-    username = forms.CharField(max_length=256)
-    password = forms.CharField(max_length=256, widget=forms.PasswordInput)
-    password_confirm = forms.CharField(max_length=256, widget=forms.PasswordInput)
-    duty = forms.IntegerField(initial=0, widget=forms.HiddenInput)
-    branch = forms.IntegerField(widget=forms.Select(choices=User.branch_choices))
+    email = forms.EmailField(max_length=256, label='邮箱')
+    username = forms.CharField(max_length=256, label='姓名')
+    password = forms.CharField(max_length=256, widget=forms.PasswordInput, label='密码')
+    password_confirm = forms.CharField(max_length=256, widget=forms.PasswordInput, label='输入相同密码')
+    duty = forms.IntegerField(initial=0, widget=forms.HiddenInput, label='职位')
+    branch = forms.IntegerField(widget=forms.Select(choices=User.branch_choices), label='校区')
 
     def clean(self):
         cleaned_data = super(RegisterForm, self).clean()
@@ -28,22 +29,22 @@ class RegisterForm(forms.Form):
             raise forms.ValidationError('Two passwords are not the same')
 
 
-class UserForm(forms.ModelForm):
+class UserForm(FormM2MFieldMixin,
+               forms.ModelForm):
+    m2m_filed = 'groups'
+
     class Meta:
         model = User
         fields = ['email', 'name', 'duty', 'branch', 'groups', 'is_admin', 'is_superuser']
 
 
-class ProfileForm(forms.ModelForm):
+class ProfileForm(FormFieldDisabledMixin,
+                  forms.ModelForm):
+    disabled_exclude = ['email']
+
     class Meta:
         model = User
         fields = ['email', 'name', 'duty', 'branch']
-
-    def __init__(self, *args, **kwargs):
-        super(ProfileForm, self).__init__(*args, **kwargs)
-        for field in self.fields:
-            if field != 'email':
-                self.fields[field].disabled = True
 
 
 class ChangePasswordForm(forms.Form):
@@ -66,11 +67,11 @@ class ChangePasswordForm(forms.Form):
             raise forms.ValidationError('username and password does not match')
 
 
+class GroupForm(FormM2MFieldMixin,
+                forms.ModelForm):
 
-
-
-class GroupForm(forms.ModelForm):
-    filter_fields = []
+    m2m_filed = 'permissions'
+    m2m_filter_args = ['content_type']
 
     class Meta:
         model = Group

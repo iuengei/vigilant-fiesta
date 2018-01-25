@@ -1,0 +1,109 @@
+{% extends 'index.html' %}
+{% block title %}{{ title.0 }}{% endblock %}
+{% load tags %}
+{% block style %}
+    <style>
+        .wrapper {
+            float: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{{ title.0 }}
+            <small>{{ title.1 }}</small>
+            {% render_perm_check request model action='add' as add_perm %}
+            {% if add_perm %}
+            <a type="button" class="add_plan_button btn btn-danger pull-right" href="{% render_add_url model %}">Add</a>
+            {% endif %}
+            <div class="col-md-4 pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control search_content" placeholder="Search for...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </h4>
+    </div>
+
+    <div class="wrapper col-md-10">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>序号&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="forloop"></span>
+                </th>
+                {% for field in fields %}
+                    <th>{% render_field_verbosename model field %}&nbsp;
+                        <span class="glyphicon glyphicon-sort" aria-hidden="true" id="{{ field }}"></span>
+                    </th>
+                {% endfor %}
+                <th>操作</th>
+            </tr>
+            </thead>
+
+            <tbody class="items_show"></tbody>
+
+            <tbody class="items_hidden hidden">
+            {% for each in items %}
+                <tr class="item" id="student-{{ each.id }}">
+                    <th class="forloop">
+                        {{ forloop.counter }}
+                    </th>
+                    {% for field in fields %}
+                        {% if field == detail %}
+                            <th class="{{ field }}">
+                                <a href="{% render_detail_url model each.id %}">{% render_field_display each field %}</a>
+                            </th>
+                        {% else %}
+                            <th class="{{ field }}">
+                                {% render_field_display each field %}
+                            </th>
+                        {% endif %}
+                    {% endfor %}
+                    <td>
+                        <div class="btn-group">
+                            <a role="button" class="dropdown-toggle" data-toggle="dropdown"
+                               aria-haspopup="true" aria-expanded="false">Action
+                            </a>
+                            <ul class="dropdown-menu actions_menu">
+                                <li><a class="change" href="">编辑</a></li>
+                                <li><a class="delete" href="{% render_delete_url model each.id %}">删除</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="table_footer text-info"><span class="items_total">{{ items.count }}</span> records in
+            total
+        </div>
+        <div id="Pagination" class="pagination"></div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script src="/static/base.js"></script>
+    <script>
+        $(function () {
+
+            initPagination();
+
+            bindSearchButton();
+            bindSortFunc();
+
+
+        });
+
+
+
+    </script>
+{% endblock %}

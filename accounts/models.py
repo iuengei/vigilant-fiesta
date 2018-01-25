@@ -7,6 +7,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from guardian.shortcuts import assign_perm
 from guardian.core import ObjectPermissionChecker
+from guardian.mixins import GuardianUserMixin
 
 
 # class Singleton(object):
@@ -54,7 +55,6 @@ from guardian.core import ObjectPermissionChecker
 
 
 class PermissionCached(type):
-
     def __init__(cls, *args, **kwargs):
         super(PermissionCached, cls).__init__(*args, **kwargs)
         cls.__cache = {}
@@ -70,7 +70,6 @@ class PermissionCached(type):
 
 
 class PermissionChecker(metaclass=PermissionCached):
-
     def __init__(self, user):
         self.user = user
         self._core = None
@@ -125,7 +124,7 @@ class UserProfileManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, GuardianUserMixin, PermissionsMixin):
     email = models.EmailField(
         verbose_name='邮箱',
         max_length=255,
@@ -204,8 +203,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     @receiver(post_save, sender='main.Teacher')
     def create_teacher_account(instance=None, created=False, update_fields=None, **kwargs):
         update_fields = update_fields if update_fields else []
-        if (created and instance.work_type == 1) or (
-                        not created and instance.work_type == 1 and 'work_type' in update_fields):
+        if created and instance.work_type == 1:
+
             email = instance.id_card[-6:] + '@jinghan.com'
             user = User.objects.create_user(email, instance.name, email)
             user.duty = 2
@@ -214,12 +213,23 @@ class User(AbstractBaseUser, PermissionsMixin):
             user.save()
 
             user.groups.add(Group.objects.get(name='Teacher'))
-            assign_perm('change_user', user, user)
             assign_perm('change_teacher', Group.objects.get(name='User_' + str(instance.branch)), instance)
-
+            assign_perm('view_teacher', Group.objects.get(name='User_' + str(instance.branch)), instance)
+        elif instance.work_type == 1 and 'work_type' in update_fields:
+            email = instance.id_card[-6:] + '@jinghan.com'
+            try:
+                user = User.objects.get(teacher_info=instance)
+                user.is_active = True
+                user.save()
+            except User.DoesNotExist:
+                user = User.objects.create_user(email, instance.name, email)
+                user.duty = 2
+                user.branch = instance.branch
+                user.teacher_info = instance
+                user.save()
         elif 'work_type' in update_fields:
             user = User.objects.get(teacher_info=instance)
-            user.is_active = True if instance.work_type else False
+            user.is_active = False
             user.save()
 
     @staticmethod
@@ -234,4 +244,4 @@ class User(AbstractBaseUser, PermissionsMixin):
             user.save()
 
             user.groups.add(Group.objects.get(name='Supervisor'))
-            assign_perm('change_user', user, user)
+            assign_perm('view_supervisor', Group.objects.get(name='User_' + str(instance.branch)), instance)
