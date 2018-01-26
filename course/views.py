@@ -31,8 +31,10 @@ class CoursesView(PermQuerysetMixin, View):
 
     def get(self, request):
 
-        students = get_objects_for_user(request.user, 'main.view_student', accept_global_perms=True)
-        plan_count = models.CoursePlan.objects.filter(student__in=students).filter(status=False).count()
+        plan_count = get_objects_for_user(request.user,
+                                          'course.view_courseplan',
+                                          accept_global_perms=True).filter(
+                                          status=False).count()
 
         items = self.get_queryset().select_related()
 
@@ -57,7 +59,7 @@ class CoursesView(PermQuerysetMixin, View):
         data['items'] = items
         data['is_courses'] = True
         data['plan_count'] = plan_count
-        data['per_number'] = (items.number-1)*items.paginator.per_page
+        data['per_number'] = (items.number - 1) * items.paginator.per_page
         data['title'] = ('排课记录', 'Courses Record')
 
         return render(request, self.template_name, data)
@@ -98,7 +100,7 @@ class CoursePlanView(PermQuerysetMixin, View):
         if not form:
             form = forms.CoursePlanForm(user=request.user)
         data['form'] = form
-        data['branch'] = form.branch
+        # data['branch'] = form.branch
 
         items = self.get_queryset().select_related()
         plan_count = items.filter(status=False).count()
@@ -122,7 +124,7 @@ class CoursePlanView(PermQuerysetMixin, View):
 
         data['items'] = items
         data['plan_count'] = plan_count
-        data['per_number'] = (items.number-1)*items.paginator.per_page
+        data['per_number'] = (items.number - 1) * items.paginator.per_page
         data['title'] = ('计划排课', 'Course Plan')
         data['is_courseplan'] = True
 
@@ -134,9 +136,13 @@ class CoursePlanView(PermQuerysetMixin, View):
             plan = form.save(commit=False)
             plan.save()
             form.save_m2m()
-
-            request.user.add_obj_perm('view_courseplan', plan)
-            request.user.add_obj_perm('delete_courseplan', plan)
+            if request.user.duty != 0:
+                request.user.add_obj_perm('view_courseplan', plan)
+                request.user.add_obj_perm('delete_courseplan', plan)
+            else:
+                assign_perm('view_courseplan', plan.student.supervisor.user_info, plan)
+                assign_perm('delete_courseplan', plan.student.supervisor.user_info, plan)
+            assign_perm('view_courseplan', Group.objects.get(name='User_' + str(plan.student.branch)), plan)
             assign_perm('change_courseplan', Group.objects.get(name='User_' + str(plan.student.branch)), plan)
 
             url = reverse('course:plan')
@@ -170,6 +176,7 @@ class CourseChainView(PermRequiredMixin, View):
     permission_required = 'course.change_courseplan'
     accept_global_perms = True
     object_check = True
+    return_403 = True
     model = models.CoursePlan
 
     def get(self, request, pk, form=None):
@@ -183,7 +190,7 @@ class CourseChainView(PermRequiredMixin, View):
         data['form'] = form
         data['plan_form'] = form.course_plan
 
-        data['title'] = ('计划排课', 'Course Plan')
+        data['title'] = '排课'
 
         return render(request, self.template_name, data)
 
@@ -198,15 +205,18 @@ class CourseChainView(PermRequiredMixin, View):
             obj = form.save(commit=False)
             plan = plan_form.save(commit=False)
             if obj.teacher.branch == plan.student.branch:
-                obj.student = course_plan
+                obj.plan = course_plan
                 obj.save()
                 form.save_m2m()
 
-                assign_perm('course.view_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
-                assign_perm('course.change_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
-                assign_perm('course.delete_coursesrecord', Group.objects.get(name='User_'+str(request.user.branch)), obj)
-
-                assign_perm('course.view_coursesrecord', obj.teacher.user_info, obj)
+                assign_perm('course.view_coursesrecord',
+                            Group.objects.get(name='User_' + str(request.user.branch)), obj)
+                assign_perm('course.change_coursesrecord',
+                            Group.objects.get(name='User_' + str(request.user.branch)), obj)
+                assign_perm('course.delete_coursesrecord',
+                            Group.objects.get(name='User_' + str(request.user.branch)), obj)
+                if hasattr(obj.teacher, 'user_info'):
+                    assign_perm('course.view_coursesrecord', getattr(obj.teacher, 'user_info'), obj)
                 assign_perm('course.view_coursesrecord', plan.student.supervisor.user_info, obj)
 
                 plan.status = True
@@ -236,7 +246,7 @@ class CourseChangeView(PermRequiredMixin, View):
 
         course = self.get_object(pk)
 
-        course_plan = course.student
+        course_plan = course.plan
 
         if not form:
             form = forms.CourseChainForm(course_plan=course_plan, instance=course)
@@ -244,13 +254,13 @@ class CourseChangeView(PermRequiredMixin, View):
         data['plan_form'] = form.course_plan
         data['model'] = models.CoursesRecord
 
-        data['title'] = ('计划排课', 'Course Plan')
+        data['title'] = '排课修改-%s' % course_plan
 
         return render(request, self.template_name, data)
 
     def post(self, request, pk):
         course = self.get_object(pk)
-        course_plan = course.student
+        course_plan = course.plan
 
         form = forms.CourseChainForm(request.POST, course_plan=course_plan, instance=course)
 
@@ -319,7 +329,7 @@ class LessonPlanAddView(PermRequiredMixin, View):
             obj.author = request.user
             obj.save()
 
-            for u in [request.user, Group.objects.get(name='User_'+str(request.user.branch))]:
+            for u in [request.user, Group.objects.get(name='User_' + str(request.user.branch))]:
                 assign_perm('course.view_lessonplan', u, obj)
                 assign_perm('course.change_lessonplan', u, obj)
                 assign_perm('course.delete_lessonplan', u, obj)

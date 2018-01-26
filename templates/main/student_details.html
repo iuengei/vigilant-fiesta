@@ -1,6 +1,6 @@
 {% extends 'index.html' %}
 {% load bootstrap3 %}
-{% block title %}学生详情—{{ detail.name }}{% endblock %}
+{% block title %}学生详情 - {{ details }}{% endblock %}
 
 {% block style %}
     <style>
@@ -154,7 +154,7 @@
                     <div class="caption">
                         <p class="">{{ each.content }}</p>
                     </div>
-                    <p class="note_foot text-info">{{ each.create_time }} posted by {{ each.author.name }}</p>
+                    <p class="note_foot text-info">{{ each.create_time|date:"Y-m-d H:i" }} posted by {{ each.author.name }}</p>
                 </div>
             </div>
         {% endfor %}
@@ -194,7 +194,7 @@
             $(".add_note_submit").on('click', function () {
                 var form_data = $("#add_note_form").serializeArray();
                 $.ajax({
-                    url: "{% url 'main:tag_add' details.id request.user.id %}",
+                    url: "{% url 'main:tag_add' details.id request.user.pk %}",
                     type: "POST",
                     data: form_data,
                     dataType: "json",

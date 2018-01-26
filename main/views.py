@@ -67,24 +67,31 @@ class StudentView(PermRequiredMixin, View):
         teachers = student.teachers.all()
         data['tags'] = tags
         data['teachers'] = teachers
-        data['tag_form'] = forms.TagForm(initial={'author': request.user.id, 'to': 1})
+        data['tag_form'] = forms.TagForm(initial={'author': request.user.id, 'to': pk})
 
         return render(request, self.template_name, data)
 
 
-class TagView(View):
-    @method_decorator(login_required)
+class TagView(PermRequiredMixin, View):
+    permission_required = 'main.add_tag'
+    accept_global_perms = True
+
     def post(self, request, to, author):
         resp = {'status': 'success'}
+
         form = forms.TagForm(request.POST)
         if form.is_valid():
-            if form.cleaned_data['to'] == int(to) and form.cleaned_data['author'] == int(author):
+
+            if int(form.cleaned_data['to']) == int(to) and request.user.pk == int(author):
                 obj = models.Tag.objects.create(content=form.data.get('content'),
-                                                author_id=form.data.get('author'),
-                                                to_id=form.data.get('to'))
+                                                author=request.user,
+                                                to_id=int(to))
 
                 assign_perm('main.change_tag', request.user, obj)
                 assign_perm('main.delete_tag', request.user, obj)
+            else:
+                resp['status'] = 'error'
+                resp['error_message'] = '2222222222符'
         else:
             resp['status'] = 'error'
             resp['error_message'] = '不得超过256个字符'
@@ -209,12 +216,12 @@ class StudentAddView(PermRequiredMixin, View):
             student.save()
             form.save_m2m()
 
-            assign_perm('main.change_student', student.supervisor.user_info, student)
-            assign_perm('main.view_student', student.supervisor.user_info, student)
+            assign_perm('change_student', student.supervisor.user_info, student)
+            assign_perm('view_student', student.supervisor.user_info, student)
 
             user_group = Group.objects.get(name='User_'+str(student.branch))
-            assign_perm('main.change_student', user_group, student)
-            assign_perm('main.view_student', user_group, student)
+            assign_perm('change_student', user_group, student)
+            assign_perm('view_student', user_group, student)
 
             msg = 'Succeed to add student'
             url = reverse('main:student_add')
@@ -304,6 +311,7 @@ class TeacherChangeView(PermRequiredMixin, View):
 
         data['form'] = form
         data['m2m_field'] = form.get_m2m_data()
+        data['width_col'] = (7, 2)
 
         return render(request, self.template_name, data)
 
@@ -370,14 +378,14 @@ class InterviewAddView(PermRequiredMixin, View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = forms.InterviewForm()
+            form = forms.InterviewForm(user=request.user)
 
         data['form'] = form
 
         return render(request, self.template_name, data)
 
     def post(self, request):
-        form = forms.InterviewForm(request.POST)
+        form = forms.InterviewForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             interview = form.save(commit=False)

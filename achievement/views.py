@@ -12,7 +12,7 @@ import main.models
 
 
 class TestsView(PermQuerysetMixin, View):
-    template_name = 'obj_list_js.html'
+    template_name = 'achievement/achievements.html'
     model = models.Test
     fields = ['name', 'exam_type', 'branch', 'create_time', 'initiator']
     permission_required = 'achievement.view_test'
@@ -21,22 +21,48 @@ class TestsView(PermQuerysetMixin, View):
         data = self.base_dict()
         data['items'] = self.get_queryset()
         data['title'] = ('测试列表', 'Test List')
+        data['is_tests'] = True
+
+        return render(request, self.template_name, data)
+
+
+class PapersView(PermQuerysetMixin, View):
+    template_name = 'achievement/achievements.html'
+    model = models.Paper
+    fields = ['name', 'subject', 'grade', 'file', 'branch', 'create_time', 'author']
+    permission_required = 'achievement.view_paper'
+    get_objects_for_user_extra_kwargs = {
+        'accept_global_perms': True,
+    }
+
+    def get(self, request):
+        data = self.base_dict()
+        data['items'] = self.get_queryset()
+        data['title'] = ('试卷列表', 'Paper List')
+        data['is_papers'] = True
 
         return render(request, self.template_name, data)
 
 
 class AchievementsView(PermQuerysetMixin, View):
-    template_name = 'obj_list_js.html'
+    template_name = 'achievement/achievements.html'
     fields = ['student', 'exam', 'exam_paper', 'score', 'initiator']
-    permission_required = 'main.view_student'
+    permission_required = 'main.change_student'
     model = main.models.Student
+
+    get_objects_for_user_extra_kwargs = {
+        'any_perm': True,
+        'accept_global_perms': False,
+    }
 
     def get(self, request):
         data = dict()
         data['items'] = models.Achievement.objects.filter(student__in=self.get_queryset())
+
         data['title'] = ('成绩列表', 'Achievement List')
         data['model'] = models.Achievement
         data['fields'] = self.fields
+        data['is_achievements'] = True
 
         return render(request, self.template_name, data)
 
@@ -125,20 +151,3 @@ class PaperAddView(LoginRequiredMixin, View):
             return redirect(request.environ.get('HTTP_REFERER'))
         else:
             return self.get(request, form)
-
-
-class PapersView(PermQuerysetMixin, View):
-    template_name = 'obj_list_js.html'
-    model = models.Paper
-    fields = ['name', 'subject', 'grade', 'file', 'branch', 'create_time', 'author']
-    permission_required = 'achievement.view_paper'
-    get_objects_for_user_extra_kwargs = {
-        'accept_global_perms': True,
-    }
-
-    def get(self, request):
-        data = self.base_dict()
-        data['items'] = self.get_queryset()
-        data['title'] = ('试卷列表', 'Paper List')
-
-        return render(request, self.template_name, data)

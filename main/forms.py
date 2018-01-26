@@ -13,7 +13,6 @@ from utils.mixins.form import FormM2MFieldMixin, FormFieldDisabledMixin, FormLim
 class TagForm(forms.Form):
     content = forms.CharField(max_length=256, widget=forms.Textarea)
     to = forms.IntegerField(widget=forms.HiddenInput)
-    author = forms.IntegerField(widget=forms.HiddenInput)
 
 
 class StudentForm(FormLimitChoicesMixin,
@@ -109,6 +108,17 @@ class TeacherChangeForm(FormFieldDisabledMixin,
         fields = ['sex', 'age', 'subject', 'mobile', 'grades']
 
 
+class TeacherInfoForm(FormFieldDisabledMixin,
+                      FormM2MFieldMixin,
+                      forms.ModelForm):
+    m2m_filed = 'grades'
+    disabled_exclude = ['mobile']
+
+    class Meta:
+        model = models.Teacher
+        fields = ['sex', 'age', 'subject', 'mobile', 'grades']
+
+
 class SupervisorForm(forms.ModelForm):
     branch = forms.IntegerField(widget=forms.Select)
 
@@ -126,7 +136,10 @@ class SupervisorForm(forms.ModelForm):
         fields = '__all__'
 
 
-class InterviewForm(forms.ModelForm):
+class InterviewForm(FormLimitChoicesMixin,
+                    forms.ModelForm):
+    fields_filter = ['branch']
+
     class Meta:
         model = models.Interview
         fields = '__all__'

@@ -3,7 +3,9 @@
 
 {% block content %}
     <div class="page-header"></div>
-        <form method="post" class="form-horizontal">
+        <form method="post" class="form-horizontal
+                                   {% if width_col.0 %} col-md-{{ width_col.0 }}{% endif %}
+                                   {% if width_col.1 %} col-md-offset-{{ width_col.1 }}{% endif %}">
         {% csrf_token %}
             {% if m2m_field %}
                 {% for foo in form %}

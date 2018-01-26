@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
-
+from django.conf import UserSettingsHolder
+from OneToOneEduAdmin import choices
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -145,8 +146,9 @@ CACHES = {
 
 AUTH_USER_MODEL = 'accounts.User'
 
-
 GUARDIAN_RENDER_403 = True
 GUARDIAN_TEMPLATE_403 = '403.html'
 
 LOGIN_URL = '/accounts/login'
+
+CHOICES_CONFIG = UserSettingsHolder(choices)

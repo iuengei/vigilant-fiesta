@@ -15,27 +15,48 @@
     {% load bootstrap3 %}
 
     <div class="content_wrapper row">
-            <ul class="nav nav-tabs">
-                <li role="presentation" {% if is_profile %} class="active" {% endif %}><a
-                        href="{% url 'accounts:profile' %}">Profile</a></li>
-                <li role="presentation" {% if is_password %} class="active" {% endif %}><a
-                        href="{% url 'accounts:change_password' %}">Password</a></li>
-                {% if request.user.teacher_info %}
-                    <li role="presentation" {% if is_teacher %} class="active" {% endif %}><a
-                            href="{% url 'accounts:teacher_info' %}">Teacher Info</a></li>{% endif %}
+        <ul class="nav nav-tabs">
+            <li role="presentation" {% if is_profile %} class="active" {% endif %}><a
+                    href="{% url 'accounts:profile' %}">Profile</a></li>
+            <li role="presentation" {% if is_password %} class="active" {% endif %}><a
+                    href="{% url 'accounts:change_password' %}">Password</a></li>
+            {% if request.user.teacher_info %}
+                <li role="presentation" {% if is_teacher %} class="active" {% endif %}><a
+                        href="{% url 'accounts:teacher_info' %}">Teacher Info</a></li>{% endif %}
 
-                {% if request.user.supervisor_info %}
-                    <li role="presentation" {% if is_supervisor %} class="active" {% endif %}><a
-                            href="{% url 'accounts:supervisor_info' %}">Supervisor Info</a></li>{% endif %}
+            {% if request.user.supervisor_info %}
+                <li role="presentation" {% if is_supervisor %} class="active" {% endif %}><a
+                        href="{% url 'accounts:supervisor_info' %}">Supervisor Info</a></li>{% endif %}
 
-            </ul>
-            <br>
-            <div class="col-md-10">
-                <form method="POST" class="form-horizontal">
-                    {% csrf_token %}
+        </ul>
+        <br>
+        <div class="col-md-10">
+            <form method="POST" class="form-horizontal">
+                {% csrf_token %}
+                {% if m2m_field %}
+                    {% for foo in form %}
+                        {% if foo.name != m2m_field.name %}
+                            {% bootstrap_field foo layout='horizontal' %}
+                        {% endif %}
+                    {% endfor %}
+                    {% include 'm2m_field.html' %}
+                {% else %}
                     {% bootstrap_form form layout='horizontal' %}
-                    <button type="submit" class="btn btn-primary pull-right" name="submit">submit</button>
-                </form>
-            </div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary pull-right" name="submit">submit</button>
+            </form>
+        </div>
     </div>
+{% endblock %}
+
+
+{% block script %}
+    {% if m2m_field %}
+        <script src="/static/m2m_field.js"></script>
+        <script>
+            $(function () {
+                initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+            });
+        </script>
+    {% endif %}
 {% endblock %}

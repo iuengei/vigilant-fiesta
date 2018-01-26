@@ -9,6 +9,9 @@ from guardian.shortcuts import assign_perm
 from guardian.core import ObjectPermissionChecker
 from guardian.mixins import GuardianUserMixin
 
+from django.conf import settings
+
+choices_config = settings.CHOICES_CONFIG
 
 # class Singleton(object):
 #     def __new__(cls, *args, **kwargs):
@@ -132,18 +135,9 @@ class User(AbstractBaseUser, GuardianUserMixin, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
 
-    duty_choices = [(0, '教研部'), (1, '班主任'), (2, '专职教师')]
-    duty = models.SmallIntegerField(default=1, choices=duty_choices, verbose_name='职位')
+    duty = models.SmallIntegerField(default=1, choices=choices_config.duty_choices, verbose_name='职位')
 
-    branch_choices = [(0, '郑州大区'),
-                      (1, '郑大校区'),
-                      (2, '省实验校区'),
-                      (3, '未来路校区'),
-                      (4, '洛阳校区'),
-                      (5, '碧沙岗校区'),
-                      (6, '郑东校区'),
-                      (7, '北环校区'),
-                      (8, '外国语校区')]
+    branch_choices = choices_config.center_choice + choices_config.branch_choices
     branch = models.SmallIntegerField(default=1, choices=branch_choices, verbose_name='校区')
 
     teacher_info = models.OneToOneField('main.Teacher', null=True, blank=True,

@@ -40,7 +40,15 @@
                     {% if plan_count %}<span class="badge">{{ plan_count }}</span>{% endif %}
                 </a>
             </li>
+            <li role="presentation">
+                {% if form.errors %}
+                    <a>
+                        <div class="text-danger">{{ form|_all_error }}</div>
+                    </a>
+                {% endif %}
+            </li>
         </ul>
+
 
         <div class="">
             <table class="table table-hover">
@@ -65,21 +73,18 @@
                     {% csrf_token %}
                     <tr class="add_form collapse {% if form.errors %}in{% endif %}" id="add_form">
                         <td></td>
-                        <td>{% bootstrap_field branch label=False %}</td>
-                        {% for foo in form %}
-                            <td>{% bootstrap_field foo label=False %}</td>
-                        {% endfor %}
+                        <td>{% bootstrap_field form.branch label=False %}</td>
+                        <td>{% bootstrap_field form.student label=False %}</td>
+                        <td>{% bootstrap_field form.grade label=False %}</td>
+                        <td>{% bootstrap_field form.subject label=False %}</td>
+                        <td>{% bootstrap_field form.plan_time label=False %}</td>
+                        <td>{% bootstrap_field form.hours label=False %}</td>
                         <td></td>
                         <th>
                             <button type="submit" class="btn btn-primary">创建</button>
                         </th>
                     </tr>
-                    {% if form.errors %}
-                    <tr>
-                        <td></td>
-                        <td><div class="text-danger">{% render__all__error form %}</div></td>
-                    </tr>
-                    {% endif %}
+
                 </form>
                 </tbody>
                 <tbody class="items_show">
@@ -127,7 +132,8 @@
             </table>
         </div>
     </div>
-    <div class="table_footer text-info"><span class="items_total">{{ items.paginator.count }}</span> records in total</div>
+    <div class="table_footer text-info"><span class="items_total">{{ items.paginator.count }}</span> records in total
+    </div>
 
     <div id="Pagination" class="container">
         <div class="pagination">{% bootstrap_pagination items %}</div>

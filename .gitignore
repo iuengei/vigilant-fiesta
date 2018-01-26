@@ -105,3 +105,5 @@ media/
 .idea/
 utils/sql/
 */migrations/
+0001_initial.pybck
+db.sqlite3

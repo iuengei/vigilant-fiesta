@@ -107,6 +107,7 @@ class FormM2MFieldMixin(object):
         _dict['m2m_error'] = self.errors.get(self.m2m_filed, None)
         _dict['filter_args'] = self.m2m_filter_args
         _dict['filter_form'] = self._get_filter_form()
+        _dict['is_disabled'] = self.is_disabled()
 
         return _dict
 
@@ -132,6 +133,12 @@ class FormM2MFieldMixin(object):
                 fields_dict[field].initial = initial_value
 
         return (formfield.get_bound_field(self, field) for field, formfield in fields_dict.items())
+
+    def is_disabled(self):
+        if hasattr(self, 'disabled_fields'):
+            if self.m2m_filed in self.disabled_fields and self.m2m_filed not in self.disabled_exclude:
+                return True
+        return False
 
 
 class FormChainMixin(object):

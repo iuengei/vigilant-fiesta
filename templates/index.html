@@ -57,11 +57,11 @@
                     <li class=""><a href="{% url 'course:list' %}">课程</a></li>
                     <li class=""><a href="{% url 'achievement:list' %}">测试</a></li>
                     <li class="nav_students_list"><a href="{% url 'main:students' %}">学生</a></li>
+                    {% if perms.course.add_lessonplan %}
+                        <li class=""><a href="{% url 'course:lessonplans' %}">教案</a></li>
+                    {% endif %}
                     {% if request.user.is_staff %}
                         <li class="nav_teachers_list"><a href="{% url 'main:teachers' %}">教师</a></li>
-                        {% if perms.main.add_lessonplan %}
-                            <li class=""><a href="{% url 'course:lessonplans' %}">教案</a></li>
-                        {% endif %}
                         <li class="nav_course dropdown">
                             <a class="dropdown-toggle" data-toggle="dropdown" role="button"
                                aria-haspopup="true"
@@ -111,8 +111,8 @@
         </div>
     </nav>
     <div class="alert_message">
-         {% load bootstrap3 %}
-         {% bootstrap_messages request.message %}
+        {% load bootstrap3 %}
+        {% bootstrap_messages request.message %}
     </div>
 
     <div class="container">

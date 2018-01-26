@@ -5,74 +5,22 @@ from django.db.models.signals import post_save, pre_delete, post_delete
 from guardian.shortcuts import assign_perm, get_objects_for_user
 from accounts.models import User, Group
 
-# Create your models here.
-branch_choices = [(1, '郑大校区'),
-                  (2, '省实验校区'),
-                  (3, '未来路校区'),
-                  (4, '洛阳校区'),
-                  (5, '碧沙岗校区'),
-                  (6, '郑东校区'),
-                  (7, '北环校区'),
-                  (8, '外国语校区')]
-subject_choices = [(1, '语文'),
-                   (2, '数学'),
-                   (3, '英语'),
-                   (4, '物理'),
-                   (5, '化学'),
-                   (6, '生物'),
-                   (7, '历史'),
-                   (8, '地理'),
-                   (9, '政治')]
-sex_choices = [(0, '女'), (1, '男')]
-attendance_choices = [(0, '正常'),
-                      (1, '老师缺席'),
-                      (2, '学生缺席'),
-                      (3, '老师迟到'),
-                      (4, '学生迟到'),
-                      (5, '老师请假'),
-                      (6, '学生请假')]
-grade_choices = [(1, '小一'),
-                 (2, '小二'),
-                 (3, '小三'),
-                 (4, '小四'),
-                 (5, '小五'),
-                 (6, '小六'),
-                 (7, '初一'),
-                 (8, '初二'),
-                 (9, '初三'),
-                 (10, '高一'),
-                 (11, '高二'),
-                 (12, '高三')]
-course_status_choices = ((1, 'finished'), (2, 'deleted'), (3, 'waiting'), (4, 'reschedule'))
+from django.conf import settings
 
+choices_config = settings.CHOICES_CONFIG
+
+
+# Create your models here.
 
 class Teacher(models.Model):
-    branch_choices = [(1, '郑大校区'),
-                      (2, '省实验校区'),
-                      (3, '未来路校区'),
-                      (4, '洛阳校区'),
-                      (5, '碧沙岗校区'),
-                      (6, '郑东校区'),
-                      (7, '北环校区'),
-                      (8, '外国语校区')]
-    subject_choices = [(1, '语文'),
-                       (2, '数学'),
-                       (3, '英语'),
-                       (4, '物理'),
-                       (5, '化学'),
-                       (6, '生物'),
-                       (7, '历史'),
-                       (8, '地理'),
-                       (9, '政治')]
-    sex_choices = [(0, '女'), (1, '男')]
     id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
     name = models.CharField(max_length=32, verbose_name='姓名')
-    sex = models.SmallIntegerField(choices=sex_choices, verbose_name='性别')
+    sex = models.SmallIntegerField(choices=choices_config.sex_choices, verbose_name='性别')
     age = models.PositiveSmallIntegerField(verbose_name='年龄')
-    branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
+    branch = models.SmallIntegerField(choices=choices_config.branch_choices, verbose_name='校区')
     work_type = models.IntegerField(choices=[(1, '专职'), (0, '兼职')], verbose_name='类别')
     grades = models.ManyToManyField('main.Grade', verbose_name='辅导年级')
-    subject = models.SmallIntegerField(choices=subject_choices, verbose_name='学科')
+    subject = models.SmallIntegerField(choices=choices_config.subject_choices, verbose_name='学科')
     mobile = models.CharField(max_length=32, null=True, blank=True, verbose_name='电话')
 
     class Meta:
@@ -102,20 +50,12 @@ class Teacher(models.Model):
 
 
 class Supervisor(models.Model):
-    sex_choices = [(0, '女'), (1, '男')]
     id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
     name = models.CharField(max_length=32)
-    sex = models.SmallIntegerField(choices=sex_choices)
+    sex = models.SmallIntegerField(choices=choices_config.sex_choices)
     age = models.SmallIntegerField()
-    branch_choices = [(1, '郑大校区'),
-                      (2, '省实验校区'),
-                      (3, '未来路校区'),
-                      (4, '洛阳校区'),
-                      (5, '碧沙岗校区'),
-                      (6, '郑东校区'),
-                      (7, '北环校区'),
-                      (8, '外国语校区')]
-    branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
+
+    branch = models.SmallIntegerField(choices=choices_config.branch_choices, verbose_name='校区')
     mobile = models.CharField(max_length=32)
 
     class Meta:
@@ -141,19 +81,7 @@ class Supervisor(models.Model):
 
 
 class Grade(models.Model):
-    grade_choices = [(1, '小一'),
-                     (2, '小二'),
-                     (3, '小三'),
-                     (4, '小四'),
-                     (5, '小五'),
-                     (6, '小六'),
-                     (7, '初一'),
-                     (8, '初二'),
-                     (9, '初三'),
-                     (10, '高一'),
-                     (11, '高二'),
-                     (12, '高三')]
-    id = models.SmallIntegerField(choices=grade_choices, primary_key=True)
+    id = models.SmallIntegerField(choices=choices_config.grade_choices, primary_key=True)
 
     def __str__(self):
         return self.get_id_display()
@@ -166,17 +94,17 @@ class Grade(models.Model):
 class Interview(models.Model):
     """面试登记表"""
     name = models.CharField(max_length=32, verbose_name='姓名')
-    sex = models.IntegerField(choices=sex_choices, verbose_name='性别')
+    sex = models.IntegerField(choices=choices_config.sex_choices, verbose_name='性别')
     age = models.IntegerField(verbose_name='年龄')
-    address = models.CharField(max_length=32, verbose_name='地址')
-    subject = models.SmallIntegerField(choices=subject_choices, verbose_name='学科')
-    grade_range = models.SmallIntegerField(choices=[(0, '小学'), (1, '初中'), (2, '高中')], verbose_name='年级')
+    address = models.CharField(max_length=32, verbose_name='住址')
+    subject = models.SmallIntegerField(choices=choices_config.subject_choices, verbose_name='学科')
+    grade_range = models.SmallIntegerField(choices=[(0, '小学'), (1, '初中'), (2, '高中')], verbose_name='年级段')
     mobile = models.CharField(max_length=32, null=True, blank=True, verbose_name='电话')
     level = models.IntegerField(choices=[(3, '优秀'), (2, '普通'), (1, '一般')], verbose_name='水平')
     result = models.IntegerField(choices=[(1, '通过'), (0, '未通过')], verbose_name='结果')
     author = models.ForeignKey('accounts.User', verbose_name='面试人')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    branch = models.PositiveSmallIntegerField(choices=branch_choices, verbose_name='校区')
+    branch = models.PositiveSmallIntegerField(choices=choices_config.branch_choices, verbose_name='校区')
 
     class Meta:
         permissions = (
@@ -210,9 +138,9 @@ class Student(models.Model):
     """学生信息表"""
     id_card = models.CharField(max_length=18, unique=True, verbose_name='身份证号')
     name = models.CharField(max_length=32, verbose_name='姓名')
-    sex = models.SmallIntegerField(choices=sex_choices, verbose_name='性别')
-    branch = models.SmallIntegerField(choices=branch_choices, verbose_name='校区')
-    grade = models.SmallIntegerField(choices=grade_choices, verbose_name='年级')
+    sex = models.SmallIntegerField(choices=choices_config.sex_choices, verbose_name='性别')
+    branch = models.SmallIntegerField(choices=choices_config.branch_choices, verbose_name='校区')
+    grade = models.SmallIntegerField(choices=choices_config.grade_choices, verbose_name='年级')
     teachers = models.ManyToManyField('Teacher', null=True, blank=True, verbose_name='授课教师')
     supervisor = models.ForeignKey('Supervisor', verbose_name='班主任')
     img = models.ImageField(upload_to='upload/Gravatar/student', null=True, blank=True)

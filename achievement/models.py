@@ -1,38 +1,12 @@
 from django.db import models
 from django.utils.timezone import datetime
 
+from django.conf import settings
+
+choices_config = settings.CHOICES_CONFIG
+
+
 # Create your models here.
-subject_choices = [(1, '语文'),
-                   (2, '数学'),
-                   (3, '英语'),
-                   (4, '物理'),
-                   (5, '化学'),
-                   (6, '生物'),
-                   (7, '历史'),
-                   (8, '地理'),
-                   (9, '政治')]
-grade_choices = [(1, '小一'),
-                 (2, '小二'),
-                 (3, '小三'),
-                 (4, '小四'),
-                 (5, '小五'),
-                 (6, '小六'),
-                 (7, '初一'),
-                 (8, '初二'),
-                 (9, '初三'),
-                 (10, '高一'),
-                 (11, '高二'),
-                 (12, '高三')]
-exam_type_choices = [(0, '周测'), (1, '月考'), (2, '期中'), (3, '期末'), (4, '其它')]
-branch_choices = [(0, '郑州大区'),
-                  (1, '郑大校区'),
-                  (2, '省实验校区'),
-                  (3, '未来路校区'),
-                  (4, '洛阳校区'),
-                  (5, '碧沙岗校区'),
-                  (6, '郑东校区'),
-                  (7, '北环校区'),
-                  (8, '外国语校区')]
 
 
 class Achievement(models.Model):
@@ -53,14 +27,20 @@ class Achievement(models.Model):
 
 class Test(models.Model):
     name = models.CharField(max_length=32, verbose_name='名称')
-    exam_type = models.PositiveIntegerField(choices=exam_type_choices, verbose_name='类别')
+    exam_type = models.PositiveIntegerField(choices=choices_config.exam_type_choices, verbose_name='类别')
 
-    branch = models.PositiveIntegerField(choices=branch_choices)
+    branch = models.PositiveIntegerField(choices=choices_config.branch_choices)
     initiator = models.ForeignKey('accounts.User', verbose_name='发起人')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     def __str__(self):
         return '(' + self.get_exam_type_display() + ')' + self.name
+
+    class Meta:
+        unique_together = ['initiator', 'name']
+        permissions = (
+            ('view_test', 'Can view test'),
+        )
 
     @classmethod
     def perm_queryset(cls, queryset, user):
@@ -75,15 +55,21 @@ class Test(models.Model):
 
 class Paper(models.Model):
     name = models.CharField(max_length=32, verbose_name='名称')
-    subject = models.PositiveSmallIntegerField(choices=subject_choices, verbose_name='学科')
-    grade = models.PositiveIntegerField(choices=grade_choices, verbose_name='年级')
+    subject = models.PositiveSmallIntegerField(choices=choices_config.subject_choices, verbose_name='学科')
+    grade = models.PositiveIntegerField(choices=choices_config.grade_choices, verbose_name='年级')
     file = models.FileField(upload_to='upload/test/papers', null=True, blank=True)
-    branch = models.PositiveIntegerField(choices=branch_choices)
-    author = models.ForeignKey('accounts.User', verbose_name='发起人')
+    branch = models.PositiveIntegerField(choices=choices_config.branch_choices)
+    author = models.ForeignKey('accounts.User', verbose_name='上传者')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     def __str__(self):
         return self.name + '(' + self.get_subject_display() + '|' + self.get_grade_display() + ')'
+
+    class Meta:
+        unique_together = ['author', 'name']
+        permissions = (
+            ('view_paper', 'Can view paper'),
+        )
 
     @classmethod
     def perm_queryset(cls, queryset, user):

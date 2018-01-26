@@ -1,0 +1,59 @@
+{% extends 'index.html' %}
+{% load tags %}
+{% load bootstrap3 %}
+
+{% block title %}{{ title.0 }}{% endblock %}
+
+{% block style %}
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{{ title.0 }}
+            <small>{{ title.1 }}</small>
+            {% render_perm_check request model action='add' as add_perm %}
+            {% if add_perm %}
+            <a type="button" class="add_plan_button btn btn-danger pull-right" href="{% render_add_url model %}">Add</a>
+            {% endif %}
+            <div class="col-md-4 pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control search_content" placeholder="Search for...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </h4>
+    </div>
+    <div>
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li role="presentation"{% if is_achievements %} class="active"{% endif %}>
+            <a href="{% url 'achievement:list' %}">成绩</a>
+        </li>
+        <li role="presentation"{% if is_tests %} class="active"{% endif %}>
+            <a href="{% url 'achievement:tests' %}">测验&nbsp;
+            </a>
+        </li>
+        <li role="presentation"{% if is_papers %} class="active"{% endif %}>
+            <a href="{% url 'achievement:papers' %}">试卷&nbsp;
+            </a>
+        </li>
+    </ul>
+    {% include 'obj_list.html' %}
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script src="/static/base.js"></script>
+    <script>
+        $(function () {
+            initPagination();
+            bindSearchButton();
+            bindSortFunc();
+        });
+    </script>
+{% endblock %}

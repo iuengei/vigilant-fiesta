@@ -1,6 +1,7 @@
 {% load bootstrap3 %}
 {% load tags %}
 
+{% if not m2m_field.is_disabled %}
 {% if m2m_field.filter_args %}
     <div class="form-group filter">
         <label class="col-md-3 control-label" for="id_filter_fields">筛选条件</label>
@@ -11,6 +12,8 @@
         </div>
     </div>
 {% endif %}
+{% endif %}
+
 
 <div class="form-group {% if m2m_field.m2m_error %}has-error{% endif %}">
     <label for="id_{{ m2m_field.name }}"
@@ -21,6 +24,7 @@
             <div class="col-md-6">
                 <label for="id_{{ m2m_field.name }}">已选项</label>
                 <select id="id_{{ m2m_field.name }}" class="form-control"
+                        {% if m2m_field.is_disabled %} disabled="disabeld"{% endif %}
                         name="{{ m2m_field.name }}"
                         multiple="multiple" style="height: 250px;">
 
@@ -34,6 +38,7 @@
             <div class="col-md-6">
                 <label for="id_{{ m2m_field.name }}_choices">待选项</label>
                 <select id="id_{{ m2m_field.name }}_choices" class="form-control"
+                        {% if m2m_field.is_disabled %} disabled="disabeld"{% endif %}
                         name="{{ m2m_field.name }}_choices" multiple="multiple" style="height: 250px;">
                     {% for opt in m2m_dict.choices %}
                         <option{% for key in m2m_field.filter_args %}

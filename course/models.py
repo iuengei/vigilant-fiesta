@@ -5,44 +5,9 @@ from django.db.models.signals import post_save, post_delete
 from guardian.shortcuts import assign_perm
 from accounts.models import User
 
-branch_choices = [(1, '郑大校区'),
-                  (2, '省实验校区'),
-                  (3, '未来路校区'),
-                  (4, '洛阳校区'),
-                  (5, '碧沙岗校区'),
-                  (6, '郑东校区'),
-                  (7, '北环校区'),
-                  (8, '外国语校区')]
-subject_choices = [(1, '语文'),
-                   (2, '数学'),
-                   (3, '英语'),
-                   (4, '物理'),
-                   (5, '化学'),
-                   (6, '生物'),
-                   (7, '历史'),
-                   (8, '地理'),
-                   (9, '政治')]
-sex_choices = [(0, '女'), (1, '男')]
-attendance_choices = [(0, '正常'),
-                      (1, '老师缺席'),
-                      (2, '学生缺席'),
-                      (3, '老师迟到'),
-                      (4, '学生迟到'),
-                      (5, '老师请假'),
-                      (6, '学生请假')]
-grade_choices = [(1, '小一'),
-                 (2, '小二'),
-                 (3, '小三'),
-                 (4, '小四'),
-                 (5, '小五'),
-                 (6, '小六'),
-                 (7, '初一'),
-                 (8, '初二'),
-                 (9, '初三'),
-                 (10, '高一'),
-                 (11, '高二'),
-                 (12, '高三')]
-course_status_choices = ((1, 'finished'), (2, 'deleted'), (3, 'waiting'), (4, 'reschedule'))
+from django.conf import settings
+
+choices_config = settings.CHOICES_CONFIG
 
 
 class LessonPlan(models.Model):
@@ -52,6 +17,7 @@ class LessonPlan(models.Model):
     content = models.TextField(max_length=1024, null=True, blank=True)
     file = models.FileField(upload_to='upload/LessonPlan', null=True, blank=True)
 
+    @staticmethod
     @receiver(post_save, sender='course.LessonPlan')
     def assign_perm(sender, instance=None, created=False, **kwargs):
         if created:
@@ -69,19 +35,21 @@ class LessonPlan(models.Model):
 
 class CoursesRecord(models.Model):
     """课程记录表"""
-    student = models.OneToOneField('CoursePlan', verbose_name='学生')
+    plan = models.OneToOneField('CoursePlan', verbose_name='学生')
     teacher = models.ForeignKey('main.Teacher', verbose_name='教师')
-    attendance = models.SmallIntegerField(null=True, blank=True, choices=attendance_choices, verbose_name='考勤')
+    attendance = models.SmallIntegerField(null=True, blank=True, choices=choices_config.attendance_choices,
+                                          verbose_name='考勤')
     lesson_plan = models.ForeignKey('LessonPlan', null=True, blank=True, verbose_name='教案')
     lesson_time = models.DateTimeField(default=datetime.now().replace(minute=0, second=0, microsecond=0),
                                        verbose_name='上课时间')
     lesson_timedelta = models.FloatField(default=7200 / 86400, verbose_name='上课时长')
     create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
-    status = models.SmallIntegerField(choices=course_status_choices, default=3, verbose_name='状态')
+    status = models.SmallIntegerField(choices=choices_config.course_status_choices, default=3, verbose_name='状态')
 
+    @staticmethod
     @receiver(post_delete, sender='course.CoursesRecord')
     def related_plan_delete(sender, instance=None, **kwargs):
-        instance.student.delete()
+        instance.plan.delete()
 
     class Meta:
         permissions = (
@@ -107,8 +75,8 @@ class CoursesRecord(models.Model):
 class CoursePlan(models.Model):
     """课程计划表"""
     student = models.ForeignKey('main.Student', verbose_name='学生')
-    grade = models.SmallIntegerField(choices=grade_choices, verbose_name='年级')
-    subject = models.SmallIntegerField(choices=subject_choices, verbose_name='科目')
+    grade = models.SmallIntegerField(choices=choices_config.grade_choices, verbose_name='年级')
+    subject = models.SmallIntegerField(choices=choices_config.subject_choices, verbose_name='科目')
     plan_time = models.DateTimeField(default=datetime.now().replace(minute=0, second=0, microsecond=0),
                                      verbose_name='计划时间')
     create_time = models.DateTimeField(auto_now_add=True, editable=False, verbose_name='创建时间')
@@ -121,7 +89,7 @@ class CoursePlan(models.Model):
             ('view_courseplan', 'Can view course plan'),
         )
 
-        unique_together =['student', 'subject', 'plan_time']
+        unique_together = ['student', 'subject', 'plan_time']
 
     def __str__(self):
         return '<' + self.get_grade_display() + '>' + self.student.name

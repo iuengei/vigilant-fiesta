@@ -73,10 +73,10 @@
                         {% if request.user.is_superuser %}
                             <td>{{ item.teacher.get_branch_display }}</td>{% endif %}
 
-                        <td data="plan-{{ item.student_id }}">{{ item.student }}</td>
+                        <td data="plan-{{ item.plan_id }}">{{ item.plan }}</td>
                         <td data="{{ item.teacher_id }}">{{ item.teacher }}</td>
                         <td>{{ item.lesson_time|date:"Y-m-d H:i" }}</td>
-                        <td>{{ item.student.get_hours_display }}</td>
+                        <td>{{ item.plan.get_hours_display }}</td>
                         {% if item.lesson_plan %}
                             <td data="{{ item.lesson_plan_id }}">{{ item.lesson_plan }}</td>
                         {% else %}

@@ -20,7 +20,7 @@ from guardian.shortcuts import assign_perm
 from utils.check_code import create_validate_code
 
 from accounts import forms
-from main.forms import TeacherChangeForm, SupervisorForm
+from main.forms import TeacherInfoForm, SupervisorForm
 import main.models as main_models
 from utils.search_queryset import SearchQuerySet
 from utils.mixins.view import PermRequiredMixin, LoginRequiredMixin
@@ -86,7 +86,7 @@ class LoginView(View):
 
                         url = request.GET.get('next', None)
                         if not url:
-                            url = reverse('main:home')
+                            url = reverse('main:students')
                         return redirect(url)
                     else:
 
@@ -423,16 +423,17 @@ class TeacherInfoView(LoginRequiredMixin, View):
     def get(self, request, form=None):
         data = {}
         if not form:
-            form = TeacherChangeForm(instance=request.user.teacher_info)
+            form = TeacherInfoForm(instance=request.user.teacher_info)
 
         data['form'] = form
+        data['m2m_field'] = form.get_m2m_data()
         data['is_teacher'] = True
 
         return render(request, self.template_name, data)
 
     @method_decorator(login_required)
     def post(self, request):
-        form = TeacherChangeForm(data=request.POST, instance=request.user.teacher_info)
+        form = TeacherInfoForm(data=request.POST, instance=request.user.teacher_info)
         if form.is_valid():
             form.save()
 
