@@ -171,7 +171,7 @@ class User(AbstractBaseUser, GuardianUserMixin, PermissionsMixin):
         )
 
     def get_full_name(self):
-        return self.get_branch_display() + self.get_duty_display() + ':' + self.name
+        return self.get_branch_display() + '   ' + self.get_duty_display() + ' : ' + self.name
 
     def get_short_name(self):
         return self.name

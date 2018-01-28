@@ -1,0 +1,33 @@
+{% extends 'index.html' %}
+{% load bootstrap3 %}
+
+{% block content %}
+    <div class="page-header"></div>
+
+    <div class="col-md-8 col-md-offset-3">
+    <div class="">
+        {% if is_user %}<h5>用户：{{ user_.get_short_name }}</h5><h5>对象：{{ obj }}</h5>{% endif %}
+        {% if is_group %}<h5>用户组：{{ group }}</h5><h5>对象：{{ obj }}</h5>{% endif %}
+
+    </div>
+        <form method="post" class="form-horizontal
+                                   {% if width_col.0 %} col-md-{{ width_col.0 }}{% endif %}
+                                   {% if width_col.1 %} col-md-offset-{{ width_col.1 }}{% endif %}">
+            {% csrf_token %}
+            {% bootstrap_form form %}
+
+            <button type="submit" class="btn btn-primary pull-right">Submit</button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block script %}
+    {% if m2m_field %}
+        <script src="/static/m2m_field.js"></script>
+        <script>
+            $(function () {
+                initM2MField('{{ m2m_field.name }}', {{ m2m_field.filter_args|safe }});
+            });
+        </script>
+    {% endif %}
+{% endblock %}

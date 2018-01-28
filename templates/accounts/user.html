@@ -26,7 +26,8 @@
             <hr>
             <ul class="list-group">
                 {% for group in groups %}
-                    <li class="list-group-item group-list"><a href='{% url 'accounts:group' group.pk %}'>{{ group.name }}</a></li>
+                    <li class="list-group-item group-list"><a
+                            href='{% url 'accounts:group' group.pk %}'>{{ group.name }}</a></li>
                 {% empty %}
                     <p>No group yet!</p>
                 {% endfor %}
@@ -41,6 +42,13 @@
                 {% empty %}
                     <p>No permission yet!</p>
                 {% endfor %}
+            </ul>
+        </div>
+        <div class="col-md-2">
+            <h4>Object Permissions</h4>
+            <hr>
+            <ul class="list-group">
+                <li class="list-group-item group-list"><a href="{% url 'accounts:user_perms_default' user.pk %}">查看</a></li>
             </ul>
         </div>
 

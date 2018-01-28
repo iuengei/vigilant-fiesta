@@ -1,0 +1,133 @@
+{% extends 'index.html' %}
+{% block title %}{{ title.0 }}{% endblock %}
+{% load tags %}
+{% block style %}
+    <script src="/static/jquery.pagination.js"></script>
+    <link rel="stylesheet" href="/static/pagination.css">
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h4>{% firstof user_or_group.get_full_name user_or_group %}
+            <small></small>
+
+            <div class="col-md-4 pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control search_content" placeholder="Search for...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default search_button" type="button">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </h4>
+    </div>
+
+    <div class="col-md-8">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th class="text-center">序号&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="forloop"></span>
+                </th>
+
+                <th class="text-center">对象&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="obj"></span>
+                </th>
+
+                <th class="text-center">View&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="view"></span>
+                </th>
+                <th class="text-center">Change&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="change"></span>
+                </th>
+                <th class="text-center">Delete&nbsp;
+                    <span class="glyphicon glyphicon-sort" aria-hidden="true" id="delete"></span>
+                </th>
+
+                <th class="text-center">操作</th>
+            </tr>
+            </thead>
+
+            <tbody class="items_show"></tbody>
+
+            <tbody class="items_hidden hidden">
+            {% with item_pk=84 %}
+                {{ perms_by_obj.item_pk }}
+            {% endwith %}
+            {% for obj, perms in perms_by_obj.items %}
+
+                <tr class="item" id="student-{{ obj.id }}">
+                    <th class="forloop text-center">
+                        {{ forloop.counter }}
+                    </th>
+
+                    <th class="text-center">{{ obj }}
+                    </th>
+                    {% for codename in codenames %}
+
+                        <th style="color: #5cb85c;" class="text-center">{% if codename in perms %}
+                            <span class="glyphicon glyphicon-ok-sign text-center" aria-hidden="true"></span>{% endif %}
+                        </th>
+                    {% endfor %}
+
+
+                    <th class="text-center">
+                        <div class="btn-group">
+                            <a role="button" class="dropdown-toggle" data-toggle="dropdown"
+                               aria-haspopup="true" aria-expanded="false">Action
+                            </a>
+                            <ul class="dropdown-menu actions_menu">
+                                <li><a class="change"
+                                       href="{% if user_or_group.get_full_name %}
+                                             {% url 'accounts:user_obj' app_label model_name obj.pk user_or_group.pk %}
+                                             {% else %}
+                                             {% url 'accounts:group_obj' app_label model_name obj.pk user_or_group.pk %}
+                                             {% endif %}">编辑</a></li>
+                            </ul>
+                        </div>
+                    </th>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="table_footer text-info"><span class="items_total">{{ perms_by_obj|length }}</span> records in
+            total
+        </div>
+        <div id="Pagination" class="pagination"></div>
+    </div>
+    <div class="col-md-3 col-md-offset-1">
+        <p><strong>Filter By Model</strong></p>
+        <hr>
+        <div class="list-group">
+
+            {% for v, k in filter_models.items %}
+                {% if v == model_name %}
+                    <a href=""
+                       class="list-group-item group-list active">{{ v }}</a>
+                {% else %}
+                    <a href="{% if user_or_group.get_full_name %}
+                             {% url 'accounts:user_perms' k.0 k.1 user_or_group.pk %}
+                             {% else %}
+                             {% url 'accounts:group_perms' k.0 k.1 user_or_group.pk %}
+                             {% endif %}"
+                       class="list-group-item group-list">{{ v }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script src="/static/base.js"></script>
+    <script>
+        $(function () {
+
+            initPagination();
+            bindSearchButton();
+            bindSortFunc();
+
+
+        });
+    </script>
+{% endblock %}

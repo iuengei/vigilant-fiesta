@@ -319,6 +319,7 @@ class LessonPlanAddView(PermRequiredMixin, View):
 
         data['title'] = '新增教案'
         data['form'] = form
+        data['width_col'] = (10, )
 
         return render(request, self.template_name, data)
 

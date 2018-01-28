@@ -1,6 +1,7 @@
+import django
+
 from collections import Iterable
 from django.forms.models import fields_for_model
-from django.forms import ModelChoiceField
 
 
 class FormLimitChoicesMixin(object):
@@ -106,33 +107,38 @@ class FormM2MFieldMixin(object):
         _dict['form'] = self
         _dict['m2m_error'] = self.errors.get(self.m2m_filed, None)
         _dict['filter_args'] = self.m2m_filter_args
-        _dict['filter_form'] = self._get_filter_form()
+        _dict['filter_form'] = self._get_filter_form() if self.m2m_filter_args else None
         _dict['is_disabled'] = self.is_disabled()
 
         return _dict
 
     def _get_filter_form(self):
-        _model = getattr(self._meta.model, self.m2m_filed).rel.to
+        _mro = self.__class__.__mro__
+        if django.forms.ModelForm in _mro:
+            _model = getattr(self._meta.model, self.m2m_filed).rel.to
 
-        if not all(hasattr(_model, field) for field in self.m2m_filter_args):
-            raise KeyError('Model %s should have all filter_args.' % _model)
+            if not all(hasattr(_model, field) for field in self.m2m_filter_args):
+                raise KeyError('Model %s should have all fields of filter_args.' % _model)
 
-        field_classes = {name: ModelChoiceField for name in self.m2m_filter_args}
-        fields_dict = fields_for_model(_model, fields=self.m2m_filter_args, field_classes=field_classes)
+            field_classes = {name: django.forms.ModelChoiceField for name in self.m2m_filter_args}
+            fields_dict = fields_for_model(_model, fields=self.m2m_filter_args, field_classes=field_classes)
 
-        for formfield in fields_dict.values():
-            formfield.required = False
+            for formfield in fields_dict.values():
+                formfield.required = False
 
-        if self.m2m_filter_initial:
-            _instance = self.instance
-            for field, v in self.m2m_filter_initial.items():
-                initial_value = getattr(_instance, v)
-                if initial_value is None:
-                    raise KeyError("The instance's attr %s should not be None." % v)
+            if self.m2m_filter_initial:
+                _instance = self.instance
+                for field, v in self.m2m_filter_initial.items():
+                    initial_value = getattr(_instance, v)
+                    if initial_value is None:
+                        raise KeyError("The instance's attr %s should be not None." % v)
 
-                fields_dict[field].initial = initial_value
+                    fields_dict[field].initial = initial_value
 
-        return (formfield.get_bound_field(self, field) for field, formfield in fields_dict.items())
+            return (formfield.get_bound_field(self, field) for field, formfield in fields_dict.items())
+
+        else:
+            raise KeyError('filter_args need inherit ModelForm.')
 
     def is_disabled(self):
         if hasattr(self, 'disabled_fields'):

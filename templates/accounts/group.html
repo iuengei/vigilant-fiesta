@@ -2,8 +2,7 @@
 {% block style %}
     <style>
         .content_wrapper {
-{#            padding-left: 1%;#}
-{#            padding-right: 1%;#}
+        {#            padding-left: 1%;#}{#            padding-right: 1%;#}
         }
     </style>
 {% endblock %}
@@ -46,8 +45,8 @@
                             <td>{{ user.last_login|date:"M d, Y" }}</td>
                             <td>{{ user.date_joined|date:"M d, Y" }}</td>
                             <td style="text-align:center">
-                            <a href="{% url 'accounts:user_edit' user.id %}">
-                                <span class="glyphicon glyphicon-edit" aria-hidden="true"></span></a>
+                                <a href="{% url 'accounts:user_edit' user.id %}">
+                                    <span class="glyphicon glyphicon-edit" aria-hidden="true"></span></a>
                             </td>
                         </tr>
                     {% empty %}
@@ -60,18 +59,25 @@
             </div>
         </div>
         <div class="col-md-3 col-md-offset-1">
-            <div class="page-header">
-                <h5>Group Name: {{ group.name }} &nbsp;
-                    <small>Permissions List</small></h5>
+            <div class="permissions">
+                <div class="page-header">
+                    <h5>Group Name: {{ group.name }} &nbsp;
+                        <small>Permissions List</small>
+                    </h5>
+                </div>
+                <ul class="list-group">
+                    {% for permission in permissions %}
+                        <li class="list-group-item group-list">{{ permission.name }}</li>
+                    {% empty %}
+                        <p>No permission yet!</p>
+                    {% endfor %}
+                </ul>
             </div>
-            <ul class="list-group">
-                {% for permission in permissions %}
-                    <li class="list-group-item group-list">{{ permission.name }}</li>
-                {% empty %}
-                    <p>No permission yet!</p>
-                {% endfor %}
-            </ul>
-
+            <div class="obj_permissions">
+                <div class="page-header">
+                    <h5>Object Permissions &nbsp;<span><a href="{% url 'accounts:group_perms_default' group.pk %}">查看</a></span></h5>
+                </div>
+            </div>
         </div>
 
     </div>

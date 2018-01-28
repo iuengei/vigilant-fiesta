@@ -3,6 +3,7 @@ from django.forms.models import ModelForm
 from django.core.urlresolvers import reverse
 from django.db.models.fields.related import ForeignObject
 from django.db.models.fields.related_descriptors import ManyToManyDescriptor
+from guardian.core import ObjectPermissionChecker
 
 register = template.Library()
 
@@ -34,8 +35,13 @@ def render_field_value(obj, field):
 
 @register.simple_tag
 def render_field_verbosename(model_or_form, field):
-    model = model_or_form._meta.model if isinstance(model_or_form, ModelForm) else model_or_form
-    return model._meta.get_field(field).verbose_name
+    try:
+        return model_or_form._meta.get_field(field).verbose_name
+    except AttributeError:
+        if isinstance(model_or_form, ModelForm):
+            return model_or_form._meta.model._meta.get_field(field).verbose_name
+        else:
+            return field
 
 
 @register.simple_tag
@@ -167,3 +173,13 @@ def render_perm_check(request, obj, action='add', perm=None):
 @register.filter
 def _all_error(_form):
     return _form.errors.get('__all__', '')
+
+
+@register.simple_tag
+def render_obj_perms(user_or_group, obj):
+    if hasattr(user_or_group, 'perm_obj'):
+        check = user_or_group.perm_obj.core
+        return check.get_user_perms(obj)
+    else:
+        check = ObjectPermissionChecker(user_or_group)
+        return check.get_group_perms(obj)

@@ -23,3 +23,27 @@ urlpatterns = [
     url(r'^check_code/', views.check_code),
     url(r'^upload/(?P<img_type>(\w)+)/(?P<obj_type>(\w)+)/$', views.upload, name='upload'),
 ]
+
+urlpatterns += [
+    url(r'^group/(?P<pk>(-)?[0-9]+)/$', views.GroupPermsView.as_view(), kwargs={'app_label': 'main',
+                                                                                'model_name': 'student'},
+        name='group_perms_default'),
+
+    url(r'^user/(?P<pk>(-)?[0-9]+)/$', views.UserPermsView.as_view(), kwargs={'app_label': 'main',
+                                                                              'model_name': 'student'},
+        name='user_perms_default'),
+
+    url(r'^(?P<app_label>(\w)+)/(?P<model_name>(\w)+)/group/(?P<pk>(-)?[0-9]+)/$', views.GroupPermsView.as_view(),
+        name='group_perms'),
+    url(r'^(?P<app_label>(\w)+)/(?P<model_name>(\w)+)/user/(?P<pk>(-)?[0-9]+)/$', views.UserPermsView.as_view(),
+        name='user_perms'),
+
+    url(r'^(?P<app_label>(\w)+)/(?P<model_name>(\w)+)/(?P<pk>(-)?[0-9]+)/user/(?P<user_pk>(-)?[0-9]+)/$',
+        views.UserObjPermView.as_view(),
+        name='user_obj'),
+
+    url(r'^(?P<app_label>(\w)+)/(?P<model_name>(\w)+)/(?P<pk>(-)?[0-9]+)/group/(?P<group_pk>(-)?[0-9]+)/$',
+        views.GroupObjPermView.as_view(),
+        name='group_obj'),
+
+]
