@@ -151,9 +151,6 @@ class RegisterView(PermRequiredMixin, View):
             user.is_admin = True
             user.save()
 
-            user.groups.add(Group.objects.get(name='User'))
-            user.groups.add(Group.objects.get(name='User_' + str(user.branch)))
-
             msg = 'Successfully Registered'
             messages.add_message(request, messages.SUCCESS, msg)
 
@@ -261,7 +258,7 @@ class UserChangeView(PermRequiredMixin, View):
 
 class GroupView(PermRequiredMixin, View):
     template_name = 'accounts/group.html'
-    permission_required = 'auth.add_group'
+    permission_required = 'auth.view_group'
     accept_global_perms = True
     object_check = True
     model = Group
@@ -349,7 +346,7 @@ class GroupAddView(PermRequiredMixin, View):
 
 class GroupsView(PermRequiredMixin, View):
     template_name = 'accounts/groups.html'
-    permission_required = 'accounts.add_group'
+    permission_required = 'auth.view_group'
     accept_global_perms = True
 
     def get(self, request):
@@ -365,7 +362,6 @@ class GroupsView(PermRequiredMixin, View):
 class ProfileView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
-    @method_decorator(login_required)
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -376,7 +372,6 @@ class ProfileView(LoginRequiredMixin, View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(login_required)
     def post(self, request):
         form = forms.ProfileForm(request.POST, instance=request.user)
         if form.is_valid():
@@ -393,7 +388,6 @@ class ProfileView(LoginRequiredMixin, View):
 class ChangePasswordView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
-    @method_decorator(login_required)
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -404,7 +398,6 @@ class ChangePasswordView(LoginRequiredMixin, View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(login_required)
     def post(self, request):
         form = forms.ChangePasswordForm(request.POST)
         if form.is_valid():
@@ -425,7 +418,6 @@ class ChangePasswordView(LoginRequiredMixin, View):
 class TeacherInfoView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
-    @method_decorator(login_required)
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -437,7 +429,6 @@ class TeacherInfoView(LoginRequiredMixin, View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(login_required)
     def post(self, request):
         form = TeacherInfoForm(data=request.POST, instance=request.user.teacher_info)
         if form.is_valid():
@@ -454,7 +445,6 @@ class TeacherInfoView(LoginRequiredMixin, View):
 class SupervisorInfoView(LoginRequiredMixin, View):
     template_name = 'accounts/user_profile.html'
 
-    @method_decorator(login_required)
     def get(self, request, form=None):
         data = {}
         if not form:
@@ -465,7 +455,6 @@ class SupervisorInfoView(LoginRequiredMixin, View):
 
         return render(request, self.template_name, data)
 
-    @method_decorator(login_required)
     def post(self, request):
         form = SupervisorForm(data=request.POST, add=False, branch=request.user.branch,
                               instance=request.user.supervisor_info)
@@ -480,15 +469,20 @@ class SupervisorInfoView(LoginRequiredMixin, View):
         return self.get(request, form)
 
 
-class UserObjPermView(View):
+class UserObjPermView(PermRequiredMixin,
+                      View):
     template_name = 'objperm/base_form.html'
+    permission_required = 'accounts.change_user'
+    object_check = True
+    object_pk = 'user_pk'
+    accept_global_perms = True
+    model = User
 
-    @method_decorator(user_passes_test(test_func=lambda u: u.is_superuser, login_url='/403.html'))
     def get(self, request, app_label, model_name, user_pk, pk):
         data = {}
         model = apps.get_model(app_label=app_label, model_name=model_name)
         obj = get_object_or_404(model, pk=pk)
-        user = get_object_or_404(User, pk=user_pk)
+        user = self.get_object(user_pk)
 
         form = UserObjectPermissionsForm(user, obj)
         data['obj'] = obj
@@ -499,7 +493,6 @@ class UserObjPermView(View):
         data['width_col'] = (9,)
         return render(request, self.template_name, data)
 
-    @method_decorator(user_passes_test(test_func=lambda u: u.is_superuser, login_url='/403.html'))
     def post(self, request, app_label, model_name, user_pk, pk):
         model = apps.get_model(app_label=app_label, model_name=model_name)
         obj = get_object_or_404(model, pk=pk)
@@ -509,18 +502,23 @@ class UserObjPermView(View):
         if form.is_valid():
             form.save_obj_perms()
 
-        return redirect(reverse('objperm:user_perms', args=(app_label, model_name, user_pk)))
+        return redirect(reverse('accounts:user_perms', args=(app_label, model_name, user_pk)))
 
 
-class GroupObjPermView(View):
+class GroupObjPermView(PermRequiredMixin,
+                       View):
     template_name = 'objperm/base_form.html'
+    permission_required = 'accounts.change_user'
+    object_check = True
+    object_pk = 'group_pk'
+    accept_global_perms = True
+    model = Group
 
-    @method_decorator(user_passes_test(test_func=lambda u: u.is_superuser, login_url='/403.html'))
     def get(self, request, app_label, model_name, group_pk, pk):
         data = {}
         model = apps.get_model(app_label=app_label, model_name=model_name)
         obj = get_object_or_404(model, pk=pk)
-        group = get_object_or_404(Group, pk=group_pk)
+        group = self.get_object(group_pk)
 
         form = GroupObjectPermissionsForm(group, obj)
         data['obj'] = obj
@@ -531,7 +529,6 @@ class GroupObjPermView(View):
         data['width_col'] = (9,)
         return render(request, self.template_name, data)
 
-    @method_decorator(user_passes_test(test_func=lambda u: u.is_superuser, login_url='/403.html'))
     def post(self, request, app_label, model_name, group_pk, pk):
         model = apps.get_model(app_label=app_label, model_name=model_name)
         obj = get_object_or_404(model, pk=pk)
@@ -541,16 +538,22 @@ class GroupObjPermView(View):
         if form.is_valid():
             form.save_obj_perms()
 
-        return redirect(reverse('objperm:group_perms', args=(app_label, model_name, group_pk)))
+        return redirect(reverse('accounts:group_perms', args=(app_label, model_name, group_pk)))
 
 
-class UserPermsView(ObjectsPermsMixin, View):
+class UserPermsView(PermRequiredMixin,
+                    ObjectsPermsMixin,
+                    View):
     template_name = 'objperm/base_table.html'
+    permission_required = 'accounts.view_user'
+    object_check = True
+    accept_global_perms = True
+    model = User
 
     def get(self, request, app_label, model_name, pk):
         data = self.base_dict()
 
-        user = get_object_or_404(User, pk=pk)
+        user = self.get_object(pk)
 
         data['user_or_group'] = user
         data['perms_by_obj'] = self.get_objects_with_perms(user)
@@ -558,13 +561,18 @@ class UserPermsView(ObjectsPermsMixin, View):
         return render(request, self.template_name, data)
 
 
-class GroupPermsView(ObjectsPermsMixin, View):
+class GroupPermsView(PermRequiredMixin,
+                     ObjectsPermsMixin,
+                     View):
     template_name = 'objperm/base_table.html'
+    permission_required = 'auth.view_group'
+    object_check = True
+    accept_global_perms = True
+    model = Group
 
     def get(self, request, app_label, model_name, pk):
         data = self.base_dict()
-
-        group = get_object_or_404(Group, pk=pk)
+        group = self.get_object(pk)
 
         data['user_or_group'] = group
         data['perms_by_obj'] = self.get_objects_with_perms(group)

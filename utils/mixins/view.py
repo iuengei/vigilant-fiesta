@@ -7,6 +7,9 @@ from accounts.models import User
 
 
 class PermRequiredMixin(LoginRequiredMixin, PermissionRequiredMixin):
+    """object_check为True时需要提供model
+    检查针对指定对象的权限时，从kwargs获取pk
+    default:pk 或者提供object_pk指定 """
     model = None
     object_check = False
 
@@ -14,7 +17,8 @@ class PermRequiredMixin(LoginRequiredMixin, PermissionRequiredMixin):
         if self.object_check:
             if self.model is None:
                 raise AttributeError('Attribute model need be defined, instead of None.')
-            pk = pk if pk else self.kwargs.get('pk', None)
+            pk = pk if pk else hasattr(self, 'object_pk') and self.kwargs.get(self.object_pk) or self.kwargs.get('pk',
+                                                                                                                 None)
             if pk is None:
                 raise KeyError('missing parameter pk.')
             return self.model.objects.get(pk=pk)
@@ -23,6 +27,9 @@ class PermRequiredMixin(LoginRequiredMixin, PermissionRequiredMixin):
 
 
 class PermQuerysetMixin(LoginRequiredMixin, PermissionListMixin):
+    """model指定queryset的作用模块
+    get_queryset方法返回拥有model指定权限的所有obj
+    其它见PermissionListMixin"""
     model = None
     fields = '__all__'
 
@@ -33,7 +40,10 @@ class PermQuerysetMixin(LoginRequiredMixin, PermissionListMixin):
 
     def get_queryset(self, queryset=None):
         if queryset is not None:
-            get_get_objects_for_user_kwargs = self.get_get_objects_for_user_kwargs(queryset)
+            if self.model and queryset.model is self.model:
+                get_get_objects_for_user_kwargs = self.get_get_objects_for_user_kwargs(queryset)
+            else:
+                raise AttributeError("Attribute model is different of queryset's model.")
         else:
             if self.model is None:
                 raise AttributeError('Attribute model need be defined, instead of None.')
@@ -44,57 +54,78 @@ class PermQuerysetMixin(LoginRequiredMixin, PermissionListMixin):
 
 
 class ObjectsPermsMixin(object):
+    """获取用户或用户组对象权限的信息
+    对象权限 default: view change delete
+    add 权限则由 global perm 管理
+    filter_models 为需要查看显示的model模块
+    obj_model 权限对象的model模块，可以由url传入app_label和model_name动态指定，或者提供object_model属性指定
+    get_objects_with_perms方法返回一个dict，包含拥有obj_model任意权限的所有obj对象，单个obj对象为键，值为所拥有此obj对象权限的list.
+    """
     codenames = ['view', 'change', 'delete']
-    filter_models = {
-        'student': ('main', 'student'),
-        'courseplan': ('course', 'courseplan'),
-        'coursesrecord': ('course', 'coursesrecord')
-    }
+    filter_models = ['main.student', 'course.courseplan', 'course.coursesrecord']
 
     def base_dict(self):
         _dict = dict()
-        _dict['app_label'] = self.app_label
-        _dict['model_name'] = self.model_name
-        _dict['model'] = self.model
-        _dict['codenames'] = [codename + '_' + self.model_name for codename in self.codenames]
-        _dict['filter_models'] = self.filter_models
+        _dict['app_label'] = self.obj_model._meta.app_label
+        _dict['model_name'] = self.obj_model._meta.model_name
+        _dict['model'] = self.obj_model
+        _dict['codenames'] = self.obj_perms
+        _dict['filter_models'] = self._get_filter_models()
         return _dict
 
     @property
-    def model(self):
-        return apps.get_model(app_label=self.app_label, model_name=self.model_name)
+    def obj_model(self):
+        object_model = getattr(self, 'object_model', None)
+        if object_model and self.obj_app_label and self.obj_model_name:
+            if object_model._meta.app_label == self.obj_app_label and object_model._meta.model_name == self.obj_model_name:
+                return object_model
+            else:
+                AttributeError('Attribute object_model has different app_label.model_name.')
+        elif object_model:
+            return object_model
+        else:
+            return apps.get_model(app_label=self.obj_app_label, model_name=self.obj_model_name)
 
     @property
-    def ctype(self):
-        return get_content_type(self.model)
+    def obj_ctype(self):
+        return get_content_type(self.obj_model)
 
     @property
-    def perms(self):
-        return get_perms_for_model(self.model).values_list('codename', flat=True)
+    def obj_perms(self):
+        _perms = [codename + '_' + self.obj_model._meta.model_name for codename in self.codenames]
+        # return get_perms_for_model(self.obj_model).values_list('codename', flat=True)
+        return _perms
 
-    def _get_objects_for_user(self, user):
+    def _get_filter_models(self):
+        _dict = dict()
+        for _ in self.filter_models:
+            app_label, model_name = _.split('.')
+            _dict[model_name] = (app_label, model_name)
+        return _dict
+
+    def _get_objects_for_user(self, user, accept_global_perms):
         return get_objects_for_user(user,
                                     any_perm=True,
-                                    perms=self.perms,
-                                    klass=self.model,
-                                    accept_global_perms=False)
+                                    perms=self.obj_perms,
+                                    klass=self.obj_model,
+                                    accept_global_perms=accept_global_perms)
 
-    def _get_objects_for_group(self, group):
+    def _get_objects_for_group(self, group, accept_global_perms):
         return get_objects_for_group(group,
                                      any_perm=True,
-                                     perms=self.perms,
-                                     klass=self.model,
-                                     accept_global_perms=False)
+                                     perms=self.obj_perms,
+                                     klass=self.obj_model,
+                                     accept_global_perms=accept_global_perms)
 
-    def get_objects_with_perms(self, user_or_group):
+    def get_objects_with_perms(self, user_or_group, accept_global_perms=False):
         if isinstance(user_or_group, User):
-            objs = self._get_objects_for_user(user_or_group)
+            objs = self._get_objects_for_user(user_or_group, accept_global_perms)
             _model = UserObjectPermission
         else:
-            objs = self._get_objects_for_group(user_or_group)
+            objs = self._get_objects_for_group(user_or_group, accept_global_perms)
             _model = GroupObjectPermission
 
-        objs_perms = _model.objects.filter(content_type=self.ctype,
+        objs_perms = _model.objects.filter(content_type=self.obj_ctype,
                                            object_pk__in=objs
                                            ).values('object_pk', 'permission__codename')
 
@@ -111,7 +142,7 @@ class ObjectsPermsMixin(object):
         self.request = request
         self.args = args
         self.kwargs = kwargs
-        self.app_label = kwargs.get('app_label', None)
-        self.model_name = kwargs.get('model_name', None)
+        self.obj_app_label = self.kwargs.get('app_label', None)
+        self.obj_model_name = self.kwargs.get('model_name', None)
         return super(ObjectsPermsMixin, self).dispatch(request, *args,
                                                        **kwargs)

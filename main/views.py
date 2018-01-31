@@ -1,21 +1,14 @@
 import json
-from django.shortcuts import render, HttpResponse, Http404, redirect
-from django.http import Http404, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
-from django.db.models import ObjectDoesNotExist
+from django.shortcuts import render, HttpResponse, redirect
 from django.views.generic import View
-from guardian.shortcuts import get_objects_for_user, get_users_with_perms
-from django.utils.decorators import method_decorator
-from guardian.decorators import permission_required_or_403
-from django.contrib.auth.decorators import login_required
+from guardian.shortcuts import get_users_with_perms
+
 from django.core.urlresolvers import reverse
 from django.contrib import messages
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from main import models
 from accounts.models import Group
-from accounts import models as accounts_models
 from main import forms
-from utils.search_queryset import SearchQuerySet
 from guardian.shortcuts import assign_perm, remove_perm
 from utils.mixins.view import PermQuerysetMixin, PermRequiredMixin
 
@@ -256,6 +249,9 @@ class TeacherAddView(PermRequiredMixin, View):
             teacher.save()
             form.save_m2m()
 
+            assign_perm('change_teacher', Group.objects.get(name='User_' + str(teacher.branch)), teacher)
+            assign_perm('view_teacher', Group.objects.get(name='User_' + str(teacher.branch)), teacher)
+
             msg = 'Succeed to add a new teacher'
             url = reverse('main:teacher_add')
             messages.add_message(request, messages.SUCCESS, msg)
@@ -285,6 +281,8 @@ class SupervisorAddView(PermRequiredMixin, View):
             supervisor = form.save(commit=False)
             supervisor.save()
             form.save_m2m()
+
+            assign_perm('view_supervisor', Group.objects.get(name='User_' + str(supervisor.branch)), supervisor)
 
             msg = 'Succeed to add a new supervisor'
             url = reverse('main:supervisor_add')

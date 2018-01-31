@@ -141,7 +141,7 @@ class Student(models.Model):
     sex = models.SmallIntegerField(choices=choices_config.sex_choices, verbose_name='性别')
     branch = models.SmallIntegerField(choices=choices_config.branch_choices, verbose_name='校区')
     grade = models.SmallIntegerField(choices=choices_config.grade_choices, verbose_name='年级')
-    teachers = models.ManyToManyField('Teacher', null=True, blank=True, verbose_name='授课教师')
+    teachers = models.ManyToManyField('Teacher', verbose_name='授课教师')
     supervisor = models.ForeignKey('Supervisor', verbose_name='班主任')
     img = models.ImageField(upload_to='upload/Gravatar/student', null=True, blank=True)
 

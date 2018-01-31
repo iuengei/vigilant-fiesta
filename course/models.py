@@ -13,7 +13,7 @@ choices_config = settings.CHOICES_CONFIG
 class LessonPlan(models.Model):
     """教案表"""
     title = models.CharField(max_length=32)
-    author = models.ForeignKey('accounts.User', to_field='teacher_info')
+    author = models.ForeignKey('accounts.User')
     content = models.TextField(max_length=1024, null=True, blank=True)
     file = models.FileField(upload_to='upload/LessonPlan', null=True, blank=True)
 
